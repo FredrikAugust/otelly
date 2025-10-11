@@ -9,6 +9,7 @@ require (
 	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.43.0
 	go.opentelemetry.io/collector/exporter v1.43.0
 	go.opentelemetry.io/collector/pdata v1.43.0
+	go.uber.org/zap v1.27.0
 )
 
 require (
@@ -150,7 +151,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
@@ -166,6 +166,7 @@ require (
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/lipgloss v1.1.0 // indirect
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
@@ -181,7 +182,6 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otlpjsonfilereceiver v0.137.0
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/samber/slog-zap v1.0.0
 	github.com/samber/slog-zap/v2 v2.6.2
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/collector/exporter/exporterhelper v0.137.0

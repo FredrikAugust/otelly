@@ -2,7 +2,9 @@ package telemetry
 
 import (
 	"context"
+	"log/slog"
 
+	"github.com/fredrikaugust/otelly/bus"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
@@ -11,9 +13,12 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func Start(ctx context.Context) error {
+func Start(ctx context.Context, bus *bus.TransportBus) error {
+	slog.Info("starting collector")
 	col, err := otelcol.NewCollector(otelcol.CollectorSettings{
-		Factories: createCollectorFactories,
+		Factories: func() (otelcol.Factories, error) {
+			return createCollectorFactories(bus)
+		},
 		BuildInfo: component.NewDefaultBuildInfo(),
 		LoggingOptions: []zap.Option{
 			zap.WrapCore(func(c zapcore.Core) zapcore.Core {

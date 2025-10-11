@@ -9,4 +9,11 @@ tasks:
       - truncate -s0 debug.log
       - truncate -s0 collector.log
       - go run ./cmd/app/main.go
-      - bat debug.log
+
+  debug:
+    desc: Builds and runs the app to be debugged
+    cmds:
+      - truncate -s0 debug.log
+      - truncate -s0 collector.log
+      - go build -gcflags="all=-N -l" -o otelly ./cmd/app/main.go
+      - ./otelly

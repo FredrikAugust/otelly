@@ -3,22 +3,15 @@
 package telemetry
 
 import (
-	"context"
-
+	"github.com/fredrikaugust/otelly/bus"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otlpjsonfilereceiver"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 )
 
-type Store struct{}
-
-func (s *Store) Receive(ctx context.Context) error {
-	return nil
-}
-
 // Builds factories which amount to ghe components needed
 // to set up a collector.
-func createCollectorFactories() (otelcol.Factories, error) {
+func createCollectorFactories(bus *bus.TransportBus) (otelcol.Factories, error) {
 	var err error
 
 	factories := otelcol.Factories{}
@@ -32,7 +25,7 @@ func createCollectorFactories() (otelcol.Factories, error) {
 	}
 
 	factories.Exporters, err = otelcol.MakeFactoryMap(
-		createOtellyExporter(),
+		createOtellyExporter(bus),
 	)
 	if err != nil {
 		return otelcol.Factories{}, err

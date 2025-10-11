@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/telemetry"
 	"github.com/fredrikaugust/otelly/ui"
 	slogzap "github.com/samber/slog-zap/v2"
@@ -16,14 +17,16 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	bus := bus.NewTransportBus()
+
 	go func() {
-		if err := telemetry.Start(ctx); err != nil {
+		if err := telemetry.Start(ctx, bus); err != nil {
 			slog.Error("failed to start receiver", "error", err)
 			cancel()
 		}
 	}()
 
-	if err := ui.Start(ctx); err != nil {
+	if err := ui.Start(ctx, bus); err != nil {
 		slog.Error("failed to start ui", "error", err)
 	}
 
@@ -46,9 +49,6 @@ func configureLogging() func() error {
 		"./debug.log",
 	}
 	zapLogger, _ := logCfg.Build()
-
-	restoreGlobalZapLogger := zap.ReplaceGlobals(zapLogger)
-	defer restoreGlobalZapLogger()
 
 	slogLogger := slog.New(slogzap.Option{Level: slog.LevelDebug, Logger: zapLogger}.NewZapHandler())
 	slog.SetDefault(slogLogger)

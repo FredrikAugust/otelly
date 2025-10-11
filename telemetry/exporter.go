@@ -2,8 +2,8 @@ package telemetry
 
 import (
 	"context"
-	"log/slog"
 
+	"github.com/fredrikaugust/otelly/bus"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
@@ -12,11 +12,17 @@ import (
 
 const ExporterName = "otelly"
 
-func createOtellyExporter() exporter.Factory {
+type traceConfig struct {
+	bus *bus.TransportBus
+}
+
+func createOtellyExporter(bus *bus.TransportBus) exporter.Factory {
 	return exporter.NewFactory(
 		component.MustNewType(ExporterName),
 		func() component.Config {
-			return nil
+			return &traceConfig{
+				bus: bus,
+			}
 		},
 		exporter.WithTraces(createTraces, component.StabilityLevelDevelopment),
 	)
@@ -28,8 +34,17 @@ func createTraces(ctx context.Context, set exporter.Settings, cfg component.Conf
 		set,
 		cfg,
 		func(ctx context.Context, td ptrace.Traces) error {
-			slog.Debug("new trace", "spanCount", td.SpanCount())
-			return nil
+			bus := cfg.(*traceConfig).bus
+
+			return traceReceiver(ctx, td, bus)
 		},
 	)
+}
+
+func traceReceiver(_ context.Context, td ptrace.Traces, bus *bus.TransportBus) error {
+	for _, resourceSpans := range td.ResourceSpans().All() {
+		bus.TraceBus <- resourceSpans
+	}
+
+	return nil
 }
