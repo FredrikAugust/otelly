@@ -5,4 +5,7 @@ version: "3"
 tasks:
   run:
     desc: Run the application
-    cmd: go run ./cmd/app/main.go
+    cmds:
+      - go run ./cmd/app/main.go
+      - defer: truncate -s0 debug.log
+      - bat debug.log
