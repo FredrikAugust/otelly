@@ -3,17 +3,36 @@
 version: "3"
 
 tasks:
-  run:
-    desc: Run the application
+  clean-logs:
+    internal: true
     cmds:
       - truncate -s0 debug.log
       - truncate -s0 collector.log
+
+  run:
+    desc: Run the application
+    deps:
+      - clean-logs
+    interactive: true
+    cmds:
       - go run ./cmd/app/main.go
 
   debug:
     desc: Builds and runs the app to be debugged
+    deps:
+      - clean-logs
+    interactive: true
     cmds:
-      - truncate -s0 debug.log
-      - truncate -s0 collector.log
       - go build -gcflags="all=-N -l" -o otelly ./cmd/app/main.go
       - ./otelly
+
+  ingest-dummy-data:
+    desc: Use antithesishq/otel-datagen to ingest dummy data
+    cmd: |
+      otel-datagen generate traces \
+        --num-traces=50 \
+        --num-spans=3 \
+        --timestamp-start="-6m" \
+        --timestamp-spacing="20s" \
+        --otlp-endpoint=localhost:4317 \
+        --resource-attr="service.name=order-processor"

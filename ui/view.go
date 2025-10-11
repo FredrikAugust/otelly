@@ -2,23 +2,26 @@ package ui
 
 import "github.com/charmbracelet/lipgloss"
 
-var baseStyles = lipgloss.
-	NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
-
 func (m Model) View() string {
-	baseStyles = baseStyles.Width(m.windowSize.width - baseStyles.GetHorizontalFrameSize()).Height(m.windowSize.height - baseStyles.GetVerticalFrameSize())
+	baseStyles := lipgloss.NewStyle().
+		Width(m.windowSize.width).
+		Height(m.windowSize.height)
 
 	switch m.currentPage {
 	case PageMain:
-		m.spanTable.SetHeight(baseStyles.GetHeight() - 1)
-		m.spanTable.SetWidth(baseStyles.GetWidth())
+		mainPanelWidth := int(float32(baseStyles.GetWidth()) * 0.6)
+		sidePanelWidth := int(float32(baseStyles.GetWidth()) * 0.4)
+
+		m.spanTable.SetHeight(baseStyles.GetHeight())
+		m.spanTable.SetWidth(mainPanelWidth)
+
+		m.spanDetails.SetHeight(baseStyles.GetHeight())
+		m.spanDetails.SetWidth(sidePanelWidth)
 
 		return baseStyles.Render(
-			lipgloss.JoinVertical(lipgloss.Left,
+			lipgloss.JoinHorizontal(lipgloss.Top,
 				m.spanTable.View(),
-				m.spanTable.HelpView(),
+				m.spanDetails.View(),
 			),
 		)
 	default:

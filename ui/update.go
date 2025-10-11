@@ -1,12 +1,15 @@
 package ui
 
 import (
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/fredrikaugust/otelly/ui/components"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var (
+		cmd  tea.Cmd
+		cmds = make([]tea.Cmd, 0)
+	)
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -18,21 +21,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case messageResourceSpansArrived:
-		return m, tea.Batch(
+		cmds = append(
+			cmds,
 			listenForNewSpans(m.bus.TraceBus),
-			tea.Batch(m.InsertResourceSpans(msg.resourceSpans)...),
+			m.InsertResourceSpans(msg.resourceSpans),
 		)
-	case messageNewRootSpan:
-		m.spanTable.SetRows(append(m.spanTable.Rows(), table.Row{
-			msg.name,
-			msg.serviceName,
-			msg.startTime.Format("15:04:05.000"),
-			msg.duration.String(),
-		}))
-		return m, nil
 	}
 
-	m.spanTable, cmd = m.spanTable.Update(msg)
+	*m.spanTable, cmd = m.spanTable.Update(msg)
+	cmds = append(cmds, cmd)
 
-	return m, cmd
+	span, exists := m.spanTable.SelectedSpan()
+	if exists {
+		resource := m.spanIDToResource[span.SpanID()]
+		*m.spanDetails, msg = m.spanDetails.Update(components.MessageSetSelectedSpan{
+			Span:     span,
+			Resource: &resource,
+		})
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
 }

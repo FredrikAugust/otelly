@@ -3,13 +3,12 @@
 package ui
 
 import (
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/ui/components"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
 const (
@@ -27,36 +26,25 @@ type Service struct {
 
 // InsertResourceSpans takes a resourceSpans object, and returns commands to insert
 // the root spans into the table.
-func (m *Model) InsertResourceSpans(resourceSpans ptrace.ResourceSpans) []tea.Cmd {
+func (m *Model) InsertResourceSpans(resourceSpans ptrace.ResourceSpans) tea.Cmd {
 	res := resourceSpans.Resource()
-
-	name, exists := res.Attributes().Get(string(semconv.ServiceNameKey))
-	if !exists {
-		name = pcommon.NewValueStr("unknown")
-	}
-
-	ns, exists := res.Attributes().Get(string(semconv.ServiceNamespaceKey))
-	if !exists {
-		ns = pcommon.NewValueStr("unknown")
-	}
-
-	svc := Service{
-		Name:      name.Str(),
-		Namespace: ns.Str(),
-	}
 
 	cmds := make([]tea.Cmd, 0)
 
 	for _, scopeSpans := range resourceSpans.ScopeSpans().All() {
 		for _, span := range scopeSpans.Spans().All() {
-			m.spanIDToService[span.SpanID()] = svc
+			m.spanIDToResource[span.SpanID()] = res
+			m.spanIDToSpan[span.SpanID()] = span
+
 			if span.ParentSpanID().IsEmpty() {
+				resName, exists := res.Attributes().Get(string(semconv.ServiceNameKey))
+				if !exists {
+					resName = pcommon.NewValueStr("unknown")
+				}
 				cmds = append(cmds, func() tea.Msg {
-					return messageNewRootSpan{
-						serviceName: svc.Name,
-						name:        span.Name(),
-						startTime:   span.StartTimestamp().AsTime(),
-						duration:    span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()),
+					return components.MessageNewRootSpan{
+						Span:         &span,
+						ResourceName: resName.Str(),
 					}
 				})
 			}
@@ -64,7 +52,7 @@ func (m *Model) InsertResourceSpans(resourceSpans ptrace.ResourceSpans) []tea.Cm
 		scopeSpans.Spans().MoveAndAppendTo(m.spans)
 	}
 
-	return cmds
+	return tea.Batch(cmds...)
 }
 
 type Model struct {
@@ -72,10 +60,13 @@ type Model struct {
 
 	bus *bus.TransportBus
 
-	spans           ptrace.SpanSlice
-	spanIDToService map[pcommon.SpanID]Service
+	spans ptrace.SpanSlice
 
-	spanTable table.Model
+	spanIDToSpan     map[pcommon.SpanID]ptrace.Span
+	spanIDToResource map[pcommon.SpanID]pcommon.Resource
+
+	spanTable   *components.SpanTableModel
+	spanDetails *components.SpanDetailsModel
 
 	windowSize *windowSize
 }
@@ -84,12 +75,14 @@ func NewModel(bus *bus.TransportBus) *Model {
 	return &Model{
 		currentPage: PageMain,
 		bus:         bus,
-		spanTable:   components.CreateSpanTable(),
+		spanTable:   components.CreateSpanTableModel(),
+		spanDetails: components.CreateSpanDetailsModel(),
 		windowSize: &windowSize{
 			0, 0,
 		},
-		spans:           ptrace.NewSpanSlice(),
-		spanIDToService: make(map[pcommon.SpanID]Service),
+		spans:            ptrace.NewSpanSlice(),
+		spanIDToSpan:     make(map[pcommon.SpanID]ptrace.Span),
+		spanIDToResource: make(map[pcommon.SpanID]pcommon.Resource),
 	}
 }
 
