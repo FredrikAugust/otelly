@@ -65,6 +65,8 @@ require (
 	github.com/prometheus/otlptranslator v0.0.2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rs/cors v1.11.1 // indirect
+	github.com/samber/lo v1.47.0 // indirect
+	github.com/samber/slog-common v0.18.1 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.8 // indirect
 	github.com/spf13/cobra v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
@@ -179,6 +181,8 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otlpjsonfilereceiver v0.137.0
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/samber/slog-zap v1.0.0
+	github.com/samber/slog-zap/v2 v2.6.2
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/collector/exporter/exporterhelper v0.137.0
 	go.opentelemetry.io/collector/otelcol v0.137.0

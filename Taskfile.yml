@@ -6,6 +6,7 @@ tasks:
   run:
     desc: Run the application
     cmds:
+      - truncate -s0 debug.log
+      - truncate -s0 collector.log
       - go run ./cmd/app/main.go
-      - defer: truncate -s0 debug.log
       - bat debug.log

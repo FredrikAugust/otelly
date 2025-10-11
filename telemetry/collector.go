@@ -7,12 +7,25 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
 	"go.opentelemetry.io/collector/otelcol"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func Start(ctx context.Context) error {
 	col, err := otelcol.NewCollector(otelcol.CollectorSettings{
 		Factories: createCollectorFactories,
 		BuildInfo: component.NewDefaultBuildInfo(),
+		LoggingOptions: []zap.Option{
+			zap.WrapCore(func(c zapcore.Core) zapcore.Core {
+				logCfg := zap.NewDevelopmentConfig()
+				logCfg.OutputPaths = []string{
+					"./collector.log",
+				}
+				zapLogger, _ := logCfg.Build()
+
+				return zapLogger.Core()
+			}),
+		},
 		ConfigProviderSettings: otelcol.ConfigProviderSettings{
 			ResolverSettings: confmap.ResolverSettings{
 				URIs: []string{"./telemetry/config.yml"},
