@@ -17,13 +17,7 @@ func Start(ctx context.Context) error {
 		BuildInfo: component.NewDefaultBuildInfo(),
 		LoggingOptions: []zap.Option{
 			zap.WrapCore(func(c zapcore.Core) zapcore.Core {
-				logCfg := zap.NewDevelopmentConfig()
-				logCfg.OutputPaths = []string{
-					"./collector.log",
-				}
-				zapLogger, _ := logCfg.Build()
-
-				return zapLogger.Core()
+				return zap.L().Core()
 			}),
 		},
 		ConfigProviderSettings: otelcol.ConfigProviderSettings{

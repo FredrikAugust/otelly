@@ -43,7 +43,6 @@ func configureLogging() func() error {
 
 	logCfg := zap.NewDevelopmentConfig()
 	logCfg.OutputPaths = []string{
-		"stdout",
 		"./debug.log",
 	}
 	zapLogger, _ := logCfg.Build()
