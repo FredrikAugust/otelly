@@ -60,6 +60,8 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	var cmd tea.Cmd
 
+	selection := s.SelectedSpanID()
+
 	switch msg.(type) {
 	case MessageUpdateRootSpanRows:
 		s.spans = s.db.GetSpans()
@@ -73,16 +75,18 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	*s.tableModel, cmd = s.tableModel.Update(msg)
 	cmds = append(cmds, cmd)
 
-	if selectedSpanID := s.SelectedSpan(); selectedSpanID != "" {
-		cmds = append(
-			cmds,
-			func() tea.Msg {
-				return MessageSetSelectedSpan{SpanID: selectedSpanID}
-			},
-		)
+	newSelection := s.SelectedSpanID()
+	if selection != newSelection {
+		cmds = append(cmds, setSelectedSpanCmd(newSelection))
 	}
 
 	return s, tea.Batch(cmds...)
+}
+
+func setSelectedSpanCmd(spanID string) tea.Cmd {
+	return func() tea.Msg {
+		return MessageSetSelectedSpan{SpanID: spanID}
+	}
 }
 
 func (s SpanTableModel) View() string {
@@ -103,9 +107,9 @@ func (s *SpanTableModel) SetWidth(w int) {
 	s.tableModel.SetWidth(s.width)
 }
 
-// SelectedSpan returns the spanID if it exists,
+// SelectedSpanID returns the spanID if it exists,
 // and "" if not
-func (s SpanTableModel) SelectedSpan() string {
+func (s SpanTableModel) SelectedSpanID() string {
 	selectedRow := s.tableModel.SelectedRow()
 	if selectedRow == nil {
 		return ""

@@ -1,12 +1,17 @@
 package ui
 
 import (
+	"log/slog"
+	"reflect"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/ui/components"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	slog.Debug("new msg", "type", reflect.TypeOf(msg).Name())
+
 	var (
 		cmd  tea.Cmd
 		cmds = make([]tea.Cmd, 0)

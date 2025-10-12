@@ -58,8 +58,6 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 }
 
 func (d *Database) GetSpan(id string) (*Span, error) {
-	slog.Debug("getting span", "id", id)
-
 	var span Span
 
 	err := d.sqlDB.Get(&span, `SELECT id, name FROM span WHERE id = $1`, id)
@@ -68,12 +66,12 @@ func (d *Database) GetSpan(id string) (*Span, error) {
 		return nil, err
 	}
 
+	slog.Debug("got span", "id", id)
+
 	return &span, nil
 }
 
 func (d *Database) GetSpans() []Span {
-	slog.Debug("getting all spans")
-
 	spans := make([]Span, 0)
 	err := d.sqlDB.Select(&spans, `SELECT id, name FROM span`)
 	if err != nil {

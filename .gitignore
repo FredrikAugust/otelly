@@ -3,3 +3,4 @@ collector.log
 
 otelly
 local.db
+local.db.wal
