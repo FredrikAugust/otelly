@@ -2,6 +2,8 @@
 package components
 
 import (
+	"log/slog"
+
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -9,8 +11,8 @@ import (
 )
 
 type SpanTableModel struct {
-	spans      []db.Span
-	tableModel *table.Model
+	spans []db.Span
+	table *table.Model
 
 	width  int
 	height int
@@ -24,6 +26,11 @@ func (s SpanTableModel) Init() tea.Cmd {
 
 func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 	cols := []table.Column{
+		// StatusCode gutter
+		{
+			Title: "",
+			Width: 1,
+		},
 		{
 			Title: "Name",
 			Width: 16,
@@ -49,8 +56,8 @@ func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 	)
 
 	return &SpanTableModel{
-		tableModel: &tableModel,
-		db:         db,
+		table: &tableModel,
+		db:    db,
 	}
 }
 
@@ -67,12 +74,12 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 		s.spans = s.db.GetSpans()
 		rows := make([]table.Row, 0)
 		for _, span := range s.spans {
-			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.String()})
+			rows = append(rows, table.Row{statusCodeView(span.StatusCode), span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.String()})
 		}
-		s.tableModel.SetRows(rows)
+		s.table.SetRows(rows)
 	}
 
-	*s.tableModel, cmd = s.tableModel.Update(msg)
+	*s.table, cmd = s.table.Update(msg)
 	cmds = append(cmds, cmd)
 
 	newSelection := s.SelectedSpanID()
@@ -81,6 +88,20 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	}
 
 	return s, tea.Batch(cmds...)
+}
+
+func statusCodeView(statusCode string) string {
+	switch statusCode {
+	case "Unset":
+		return ""
+	case "Ok":
+		return "✅"
+	case "Error":
+		return "⚠️"
+	}
+
+	slog.Warn("got status code which shouldn't exist", "code", statusCode)
+	return ""
 }
 
 func setSelectedSpanCmd(spanID string) tea.Cmd {
@@ -92,28 +113,28 @@ func setSelectedSpanCmd(spanID string) tea.Cmd {
 func (s SpanTableModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		lipgloss.NewStyle().Width(s.width).Height(s.height-1).Render(s.tableModel.View()),
-		s.tableModel.HelpView(),
+		lipgloss.NewStyle().Width(s.width).Height(s.height-1).Render(s.table.View()),
+		s.table.HelpView(),
 	)
 }
 
 func (s *SpanTableModel) SetHeight(h int) {
 	s.height = h
-	s.tableModel.SetHeight(s.height - 1)
+	s.table.SetHeight(s.height - 1)
 }
 
 func (s *SpanTableModel) SetWidth(w int) {
 	s.width = w
-	s.tableModel.SetWidth(s.width)
+	s.table.SetWidth(s.width)
 }
 
 // SelectedSpanID returns the spanID if it exists,
 // and "" if not
 func (s SpanTableModel) SelectedSpanID() string {
-	selectedRow := s.tableModel.SelectedRow()
+	selectedRow := s.table.SelectedRow()
 	if selectedRow == nil {
 		return ""
 	}
 
-	return s.spans[s.tableModel.Cursor()].ID
+	return s.spans[s.table.Cursor()].ID
 }

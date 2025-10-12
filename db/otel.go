@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -37,14 +38,22 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 
 	for _, scopeSpans := range spans.ScopeSpans().All() {
 		for _, span := range scopeSpans.Spans().All() {
-			_, err := d.sqlDB.Exec(
-				`INSERT INTO span VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			attrs, err := json.Marshal(span.Attributes().AsRaw())
+			if err != nil {
+				attrs = []byte("{}")
+			}
+
+			_, err = d.sqlDB.Exec(
+				`INSERT INTO span VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 				span.SpanID().String(),
 				span.Name(),
 				span.StartTimestamp().AsTime(),
 				span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).Milliseconds(),
 				span.TraceID().String(),
 				span.ParentSpanID().String(),
+				span.Status().Code().String(),
+				span.Status().Message(),
+				attrs,
 				resID,
 			)
 			if err != nil {
@@ -60,7 +69,21 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 func (d *Database) GetSpan(id string) (*Span, error) {
 	var span Span
 
-	err := d.sqlDB.Get(&span, `SELECT trace_id, id, name, start_time, duration_ms FROM span WHERE id = $1`, id)
+	err := d.sqlDB.Get(
+		&span,
+		`SELECT
+							trace_id,
+							id,
+							name,
+							start_time,
+							attributes,
+							duration_ms,
+							resource_id,
+						FROM
+							span
+						WHERE id = $1`,
+		id,
+	)
 	if err != nil {
 		slog.Warn("failed to get span", "spanID", id)
 		return nil, err
@@ -69,6 +92,28 @@ func (d *Database) GetSpan(id string) (*Span, error) {
 	slog.Debug("got span", "id", id)
 
 	return &span, nil
+}
+
+func (d *Database) GetResource(id string) (*Resource, error) {
+	var res Resource
+
+	err := d.sqlDB.Get(
+		&res,
+		`SELECT
+							*
+						FROM
+							resource
+						WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		slog.Warn("failed to get resource", "id", id)
+		return nil, err
+	}
+
+	slog.Debug("got resource", "id", id)
+
+	return &res, nil
 }
 
 func (d *Database) GetSpans() []Span {
@@ -81,6 +126,8 @@ func (d *Database) GetSpans() []Span {
 							s.name,
 							s.start_time,
 							s.duration_ms,
+							s.status_code,
+							s.attributes,
 							r.service_name
 						FROM
 							span s

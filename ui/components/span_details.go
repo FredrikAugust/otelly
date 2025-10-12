@@ -2,6 +2,8 @@ package components
 
 import (
 	"log/slog"
+	"reflect"
+	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -47,11 +49,17 @@ func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 			break
 		}
 
-		spanWithResource, err := s.db.GetSpan(msg.SpanID)
+		span, err := s.db.GetSpan(msg.SpanID)
 		if err != nil {
 			slog.Warn("could not get span with resource in span details", "spanID", msg.SpanID, "error", err)
 		} else {
-			s.span = spanWithResource
+			s.span = span
+			res, err := s.db.GetResource(span.ResourceID)
+			if err != nil {
+				slog.Warn("could not get resource", "error", err)
+			} else {
+				s.resource = res
+			}
 		}
 	}
 	return s, nil
@@ -79,22 +87,65 @@ func (s SpanDetailsModel) View() string {
 			),
 			lipgloss.NewStyle().Bold(true).Render(s.span.Name),
 			s.attributeView(),
+			s.resourceView(),
 		))
+}
+
+func (s SpanDetailsModel) resourceView() string {
+	baseStyle := lipgloss.NewStyle().
+		Width(s.width-6).
+		Padding(0, 1).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240"))
+
+	if s.resource == nil {
+		return baseStyle.Render("No resource found")
+	}
+
+	return baseStyle.Render(
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			lipgloss.NewStyle().Bold(true).Render("Resource"),
+			lipgloss.JoinVertical(
+				lipgloss.Left,
+				lipgloss.JoinHorizontal(lipgloss.Top,
+					lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Render("Service "),
+					s.resource.ServiceNamespace,
+					".",
+					s.resource.ServiceName,
+				),
+			),
+		),
+	)
 }
 
 func (s SpanDetailsModel) attributeView() string {
 	attributeStrs := make([]string, 0)
-	// for key, value := range s.span.Attributes().All() {
-	// 	attributeStrs = append(
-	// 		attributeStrs,
-	// 		lipgloss.JoinHorizontal(
-	// 			lipgloss.Top,
-	// 			lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Width(16).Render(key),
-	// 			" ",
-	// 			lipgloss.NewStyle().Render(value.Str()),
-	// 		),
-	// 	)
-	// }
+
+	keys := make([]string, 0)
+	for k := range s.span.Attributes {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := s.span.Attributes[k]
+
+		// Only show strings
+		if reflect.TypeOf(v) != reflect.TypeFor[string]() {
+			continue
+		}
+
+		attributeStrs = append(
+			attributeStrs,
+			lipgloss.JoinHorizontal(
+				lipgloss.Top,
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Width(16).Render(k),
+				" ",
+				lipgloss.NewStyle().Render(v.(string)),
+			),
+		)
+	}
 
 	return lipgloss.NewStyle().
 		Width(s.width-6).

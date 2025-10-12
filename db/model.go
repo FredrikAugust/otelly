@@ -10,10 +10,18 @@ type Span struct {
 	// Duration in milliseconds
 	Duration time.Duration `db:"duration_ms"`
 
+	StatusCode    string `db:"status_code"`
+	StatusMessage string `db:"status_message"`
+
+	Attributes map[string]any `db:"attributes"`
+
+	ResourceID string `db:"resource_id"`
+
 	ServiceName string `db:"service_name"`
 }
 
 type Resource struct {
-	ServiceName      string `db:"name"`
-	ServiceNamespace string `db:"namespace"`
+	ID               string `db:"id"`
+	ServiceName      string `db:"service_name"`
+	ServiceNamespace string `db:"service_namespace"`
 }

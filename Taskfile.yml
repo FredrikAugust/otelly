@@ -15,7 +15,8 @@ tasks:
       - clean-logs
     interactive: true
     cmds:
-      - go run ./cmd/app/main.go
+      - go build -o otelly ./cmd/app/main.go
+      - ./otelly
 
   debug:
     desc: Builds and runs the app to be debugged

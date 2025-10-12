@@ -47,6 +47,9 @@ func (d *Database) Migrate(ctx context.Context) error {
 			duration_ms INTEGER,
 			trace_id VARCHAR,
 			parent_span_id VARCHAR,
+			status_code VARCHAR,
+			status_message VARCHAR,
+			attributes JSON,
 			resource_id VARCHAR,
 			FOREIGN KEY (resource_id) REFERENCES resource (id)
 		)`,
