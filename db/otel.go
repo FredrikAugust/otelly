@@ -50,7 +50,7 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 				span.SpanID().String(),
 				span.Name(),
 				span.StartTimestamp().AsTime(),
-				span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).Milliseconds(),
+				span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).Nanoseconds(),
 				span.TraceID().String(),
 				span.ParentSpanID().String(),
 				span.Status().Code().String(),
@@ -79,7 +79,7 @@ func (d *Database) GetSpan(id string) (*Span, error) {
 							name,
 							start_time,
 							attributes,
-							duration_ms,
+							duration_ns,
 							resource_id,
 						FROM
 							span
@@ -127,7 +127,7 @@ func (d *Database) GetSpans() []Span {
 							s.id,
 							s.name,
 							s.start_time,
-							s.duration_ms,
+							s.duration_ns,
 							s.status_code,
 							s.attributes,
 							r.service_name
@@ -175,6 +175,27 @@ func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteBucket,
 	}
 
 	zap.L().Debug("got span history", zap.Int("num", len(res)))
+
+	return res, nil
+}
+
+func (d *Database) GetSpansForTrace(traceID string) ([]Span, error) {
+	query := `
+	SELECT
+		*
+	FROM
+		span
+	WHERE
+		trace_id = $1`
+
+	res := make([]Span, 0)
+
+	err := d.sqlDB.Select(&res, query, traceID)
+	if err != nil {
+		return nil, err
+	}
+
+	zap.L().Debug("got spans for trace", zap.String("traceID", traceID), zap.Int("spans", len(res)))
 
 	return res, nil
 }

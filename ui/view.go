@@ -1,6 +1,8 @@
 package ui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+)
 
 func (m Model) View() string {
 	baseStyles := lipgloss.NewStyle().
@@ -9,8 +11,8 @@ func (m Model) View() string {
 
 	switch m.currentPage {
 	case PageMain:
-		mainPanelWidth := int(float32(baseStyles.GetWidth()) * 0.6)
-		sidePanelWidth := int(float32(baseStyles.GetWidth()) * 0.4)
+		sidePanelWidth := 80
+		mainPanelWidth := baseStyles.GetWidth() - sidePanelWidth
 
 		m.spanTable.SetHeight(baseStyles.GetHeight() - 1)
 		m.spanTable.SetWidth(mainPanelWidth)

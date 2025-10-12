@@ -64,6 +64,7 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 
 	switch msg.(type) {
 	case MessageUpdateRootSpanRows:
+		// TODO: this actually just gets all. we could just add db.GetRootSpans with a where clause
 		s.spans = s.db.GetSpans()
 		rows := make([]table.Row, 0)
 		for _, span := range s.spans {

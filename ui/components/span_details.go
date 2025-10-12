@@ -26,13 +26,18 @@ type SpanDetailsModel struct {
 	chart tslc.Model
 
 	db *db.Database
+
+	waterfallModel *SpanWaterfallModel
 }
 
 // Init implements tea.Model.
 func (s SpanDetailsModel) Init() tea.Cmd {
-	return func() tea.Msg {
-		return MessageUpdateGraph{}
-	}
+	return tea.Batch(
+		func() tea.Msg {
+			return MessageUpdateGraph{}
+		},
+		s.waterfallModel.Init(),
+	)
 }
 
 func CreateSpanDetailsModel(db *db.Database) *SpanDetailsModel {
@@ -50,6 +55,8 @@ func CreateSpanDetailsModel(db *db.Database) *SpanDetailsModel {
 
 		width:  0,
 		height: 0,
+
+		waterfallModel: CreateSpanWaterfallModel(db),
 	}
 }
 
@@ -86,6 +93,7 @@ func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 
 		s.updateGraph()
 	case MessageUpdateGraph:
+		// TODO: we trigger downstream updates due to this message. we should move to its own component
 		cmds = append(cmds, tea.Tick(5*time.Second, func(t time.Time) tea.Msg {
 			return MessageUpdateGraph{}
 		}))
@@ -98,6 +106,10 @@ func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 		s.chart.SetViewTimeRange(time.Now().Add(-10*time.Minute), time.Now())
 		s.chart.DrawBraille()
 	}
+
+	var cmd tea.Cmd
+	*s.waterfallModel, cmd = s.waterfallModel.Update(msg)
+	cmds = append(cmds, cmd)
 
 	return s, tea.Batch(cmds...)
 }
@@ -139,6 +151,7 @@ func (s SpanDetailsModel) View() string {
 				lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Render(s.span.ID),
 			),
 			lipgloss.NewStyle().Bold(true).Render(s.span.Name),
+			s.waterfallModel.View(),
 			s.attributeView(),
 			s.resourceView(),
 		))
@@ -196,7 +209,7 @@ func (s SpanDetailsModel) attributeView() string {
 			attributeStrs,
 			lipgloss.JoinHorizontal(
 				lipgloss.Top,
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Width(16).Render(k),
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Width(24).Render(k),
 				" ",
 				lipgloss.NewStyle().Render(v.(string)),
 			),
@@ -217,8 +230,10 @@ func (s SpanDetailsModel) attributeView() string {
 
 func (s *SpanDetailsModel) SetWidth(w int) {
 	s.width = w
+	s.waterfallModel.width = w - 4
 }
 
 func (s *SpanDetailsModel) SetHeight(h int) {
 	s.height = h
+	s.waterfallModel.height = h
 }

@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/db"
+	"github.com/fredrikaugust/otelly/ui/components"
 )
 
 func Start(ctx context.Context, bus *bus.TransportBus, db *db.Database) error {
@@ -30,5 +31,10 @@ func (m Model) Init() tea.Cmd {
 		listenForNewSpans(m.bus.TraceBus),
 		m.spanDetails.Init(),
 		m.spanTable.Init(),
+		func() tea.Msg {
+			// In case we're runnign DB with file we can keep the seed around, and
+			// this will make it load into the UI immediately.
+			return components.MessageUpdateRootSpanRows{}
+		},
 	)
 }

@@ -3,12 +3,12 @@ package db
 import "time"
 
 type Span struct {
-	TraceID   string    `db:"trace_id"`
-	ID        string    `db:"id"`
-	Name      string    `db:"name"`
-	StartTime time.Time `db:"start_time"`
-	// Duration in milliseconds
-	Duration time.Duration `db:"duration_ms"`
+	TraceID      string        `db:"trace_id"`
+	ID           string        `db:"id"`
+	Name         string        `db:"name"`
+	StartTime    time.Time     `db:"start_time"`
+	Duration     time.Duration `db:"duration_ns"`
+	ParentSpanID string        `db:"parent_span_id"`
 
 	StatusCode    string `db:"status_code"`
 	StatusMessage string `db:"status_message"`
