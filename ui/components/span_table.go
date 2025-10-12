@@ -2,8 +2,6 @@
 package components
 
 import (
-	"log/slog"
-
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -26,14 +24,9 @@ func (s SpanTableModel) Init() tea.Cmd {
 
 func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 	cols := []table.Column{
-		// StatusCode gutter
-		{
-			Title: "",
-			Width: 1,
-		},
 		{
 			Title: "Name",
-			Width: 16,
+			Width: 32,
 		},
 		{
 			Title: "Service",
@@ -74,7 +67,7 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 		s.spans = s.db.GetSpans()
 		rows := make([]table.Row, 0)
 		for _, span := range s.spans {
-			rows = append(rows, table.Row{statusCodeView(span.StatusCode), span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.String()})
+			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.String()})
 		}
 		s.table.SetRows(rows)
 	}
@@ -90,20 +83,6 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	return s, tea.Batch(cmds...)
 }
 
-func statusCodeView(statusCode string) string {
-	switch statusCode {
-	case "Unset":
-		return ""
-	case "Ok":
-		return "✅"
-	case "Error":
-		return "⚠️"
-	}
-
-	slog.Warn("got status code which shouldn't exist", "code", statusCode)
-	return ""
-}
-
 func setSelectedSpanCmd(spanID string) tea.Cmd {
 	return func() tea.Msg {
 		return MessageSetSelectedSpan{SpanID: spanID}
@@ -114,13 +93,13 @@ func (s SpanTableModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		lipgloss.NewStyle().Width(s.width).Height(s.height-1).Render(s.table.View()),
-		s.table.HelpView(),
+		lipgloss.NewStyle().Render(s.table.HelpView()),
 	)
 }
 
 func (s *SpanTableModel) SetHeight(h int) {
 	s.height = h
-	s.table.SetHeight(s.height - 1)
+	s.table.SetHeight(s.height - 1) // for Help
 }
 
 func (s *SpanTableModel) SetWidth(w int) {

@@ -22,7 +22,7 @@ func Start(ctx context.Context, bus *bus.TransportBus) error {
 		BuildInfo: component.NewDefaultBuildInfo(),
 		LoggingOptions: []zap.Option{
 			zap.WrapCore(func(c zapcore.Core) zapcore.Core {
-				return zap.L().Core()
+				return zap.NewNop().Core()
 			}),
 		},
 		ConfigProviderSettings: otelcol.ConfigProviderSettings{

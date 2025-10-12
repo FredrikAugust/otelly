@@ -64,6 +64,7 @@ func configureLogging() func() error {
 		"./debug.log",
 	}
 	zapLogger, _ := logCfg.Build()
+	zap.ReplaceGlobals(zapLogger)
 
 	slogLogger := slog.New(slogzap.Option{Level: slog.LevelDebug, Logger: zapLogger}.NewZapHandler())
 	slog.SetDefault(slogLogger)

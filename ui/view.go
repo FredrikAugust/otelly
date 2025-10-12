@@ -12,16 +12,20 @@ func (m Model) View() string {
 		mainPanelWidth := int(float32(baseStyles.GetWidth()) * 0.6)
 		sidePanelWidth := int(float32(baseStyles.GetWidth()) * 0.4)
 
-		m.spanTable.SetHeight(baseStyles.GetHeight())
+		m.spanTable.SetHeight(baseStyles.GetHeight() - 1)
 		m.spanTable.SetWidth(mainPanelWidth)
 
-		m.spanDetails.SetHeight(baseStyles.GetHeight())
+		m.spanDetails.SetHeight(baseStyles.GetHeight() - 1)
 		m.spanDetails.SetWidth(sidePanelWidth)
 
 		return baseStyles.Render(
-			lipgloss.JoinHorizontal(lipgloss.Top,
-				m.spanTable.View(),
-				m.spanDetails.View(),
+			lipgloss.JoinVertical(
+				lipgloss.Left,
+				lipgloss.NewStyle().Padding(0, 1).Width(baseStyles.GetWidth()).Background(lipgloss.Color("32")).Bold(true).Render("Otelly"),
+				lipgloss.JoinHorizontal(lipgloss.Top,
+					m.spanTable.View(),
+					m.spanDetails.View(),
+				),
 			),
 		)
 	default:

@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	"go.uber.org/zap"
 )
 
 // InsertResourceSpans inserts the resource and all encompassing spans
@@ -141,4 +143,38 @@ func (d *Database) GetSpans() []Span {
 	slog.Debug("got spans", "len", len(spans))
 
 	return spans
+}
+
+type SpansPerMinuteBucket struct {
+	Timestamp time.Time `db:"bucket_start"`
+	SpanCount int       `db:"span_count"`
+}
+
+func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteBucket, error) {
+	query := `
+	SELECT
+		date_trunc('minute', start_time) as bucket_start,
+		COUNT(*) as span_count
+	FROM
+		span s
+	LEFT JOIN resource r ON
+		s.resource_id = r.id
+	WHERE
+		r.id = $1
+	GROUP BY
+		bucket_start
+	ORDER BY
+		bucket_start DESC
+	`
+
+	res := make([]SpansPerMinuteBucket, 0)
+
+	err := d.sqlDB.Select(&res, query, svc)
+	if err != nil {
+		return nil, err
+	}
+
+	zap.L().Debug("got span history", zap.Int("num", len(res)))
+
+	return res, nil
 }

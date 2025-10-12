@@ -26,5 +26,9 @@ func Start(ctx context.Context, bus *bus.TransportBus, db *db.Database) error {
 }
 
 func (m Model) Init() tea.Cmd {
-	return listenForNewSpans(m.bus.TraceBus)
+	return tea.Batch(
+		listenForNewSpans(m.bus.TraceBus),
+		m.spanDetails.Init(),
+		m.spanTable.Init(),
+	)
 }

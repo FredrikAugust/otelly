@@ -4,31 +4,47 @@ import (
 	"log/slog"
 	"reflect"
 	"sort"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
+	"go.uber.org/zap"
+
+	tslc "github.com/NimbleMarkets/ntcharts/linechart/timeserieslinechart"
 )
 
 type SpanDetailsModel struct {
 	span     *db.Span
 	resource *db.Resource
 
+	resourceSpanHistory []db.SpansPerMinuteBucket
+
 	width  int
 	height int
+
+	chart tslc.Model
 
 	db *db.Database
 }
 
 // Init implements tea.Model.
 func (s SpanDetailsModel) Init() tea.Cmd {
-	return nil
+	return func() tea.Msg {
+		return MessageUpdateGraph{}
+	}
 }
 
 func CreateSpanDetailsModel(db *db.Database) *SpanDetailsModel {
 	return &SpanDetailsModel{
 		span:     nil,
 		resource: nil,
+
+		chart: tslc.New(
+			30, 10,
+			tslc.WithUpdateHandler(tslc.SecondUpdateHandler(60)),
+			tslc.WithXLabelFormatter(tslc.HourTimeLabelFormatter()),
+		),
 
 		db: db,
 
@@ -41,7 +57,11 @@ type MessageSetSelectedSpan struct {
 	SpanID string
 }
 
+type MessageUpdateGraph struct{}
+
 func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
+	cmds := make([]tea.Cmd, 0)
+
 	switch msg := msg.(type) {
 	case MessageSetSelectedSpan:
 		if s.span != nil && msg.SpanID == s.span.ID {
@@ -52,17 +72,50 @@ func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 		span, err := s.db.GetSpan(msg.SpanID)
 		if err != nil {
 			slog.Warn("could not get span with resource in span details", "spanID", msg.SpanID, "error", err)
-		} else {
-			s.span = span
-			res, err := s.db.GetResource(span.ResourceID)
-			if err != nil {
-				slog.Warn("could not get resource", "error", err)
-			} else {
-				s.resource = res
-			}
+			return s, nil
 		}
+
+		s.span = span
+		res, err := s.db.GetResource(span.ResourceID)
+		if err != nil {
+			slog.Warn("could not get resource", "error", err)
+			return s, nil
+		}
+
+		s.resource = res
+
+		s.updateGraph()
+	case MessageUpdateGraph:
+		cmds = append(cmds, tea.Tick(5*time.Second, func(t time.Time) tea.Msg {
+			return MessageUpdateGraph{}
+		}))
+		s.updateGraph()
 	}
-	return s, nil
+
+	s.chart, _ = s.chart.Update(msg)
+	if s.resourceSpanHistory != nil {
+		s.chart.Resize(s.width-4, 10)
+		s.chart.SetViewTimeRange(time.Now().Add(-10*time.Minute), time.Now())
+		s.chart.DrawBraille()
+	}
+
+	return s, tea.Batch(cmds...)
+}
+
+func (s *SpanDetailsModel) updateGraph() {
+	if s.resource == nil {
+		return
+	}
+	var err error
+	s.resourceSpanHistory, err = s.db.SpansPerMinuteForService(s.resource.ID)
+	if err != nil {
+		zap.L().Warn("could not get span history for svc", zap.String("id", s.resource.ID), zap.Error(err))
+	}
+
+	s.chart.ClearAllData()
+	for _, history := range s.resourceSpanHistory {
+		s.chart.Push(tslc.TimePoint{Time: history.Timestamp, Value: float64(history.SpanCount)})
+	}
 }
 
 func (s SpanDetailsModel) View() string {
@@ -93,10 +146,8 @@ func (s SpanDetailsModel) View() string {
 
 func (s SpanDetailsModel) resourceView() string {
 	baseStyle := lipgloss.NewStyle().
-		Width(s.width-6).
-		Padding(0, 1).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240"))
+		Width(s.width - 4).
+		MarginTop(1)
 
 	if s.resource == nil {
 		return baseStyle.Render("No resource found")
@@ -114,6 +165,11 @@ func (s SpanDetailsModel) resourceView() string {
 					".",
 					s.resource.ServiceName,
 				),
+				lipgloss.NewStyle().
+					MarginTop(1).
+					Render(
+						s.chart.View(),
+					),
 			),
 		),
 	)
@@ -148,10 +204,8 @@ func (s SpanDetailsModel) attributeView() string {
 	}
 
 	return lipgloss.NewStyle().
-		Width(s.width-6).
-		Padding(0, 1).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		Width(s.width - 4).
+		MarginTop(1).
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Left,
