@@ -1,6 +1,7 @@
 package components
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -108,7 +109,9 @@ func (m SpanWaterfallModel) View() string {
 	return baseStyle.Render(
 		lipgloss.JoinVertical(
 			lipgloss.Left,
-			lipgloss.NewStyle().Bold(true).MarginBottom(1).Render("Trace"),
+			lipgloss.JoinHorizontal(
+				lipgloss.Top, lipgloss.NewStyle().Bold(true).MarginBottom(1).Render("Trace"), " ", lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Render(fmt.Sprintf("(%v)", maxTime.Sub(minTime))),
+			),
 			lipgloss.JoinVertical(lipgloss.Left, lines...),
 		),
 	)

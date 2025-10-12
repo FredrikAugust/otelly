@@ -11,8 +11,8 @@ func (m Model) View() string {
 
 	switch m.currentPage {
 	case PageMain:
-		sidePanelWidth := 80
-		mainPanelWidth := baseStyles.GetWidth() - sidePanelWidth
+		mainPanelWidth := 76
+		sidePanelWidth := baseStyles.GetWidth() - mainPanelWidth - 4
 
 		m.spanTable.SetHeight(baseStyles.GetHeight() - 1)
 		m.spanTable.SetWidth(mainPanelWidth)

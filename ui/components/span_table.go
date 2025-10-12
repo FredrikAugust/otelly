@@ -38,7 +38,7 @@ func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 		},
 		{
 			Title: "Duration",
-			Width: 8,
+			Width: 10,
 		},
 	}
 
@@ -93,7 +93,7 @@ func setSelectedSpanCmd(spanID string) tea.Cmd {
 func (s SpanTableModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		lipgloss.NewStyle().Width(s.width).Height(s.height-1).Render(s.table.View()),
+		lipgloss.NewStyle().Height(s.height-1).Render(s.table.View()),
 		lipgloss.NewStyle().Render(s.table.HelpView()),
 	)
 }
