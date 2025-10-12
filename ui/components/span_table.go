@@ -2,28 +2,27 @@
 package components
 
 import (
-	"log/slog"
-
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"go.opentelemetry.io/collector/pdata/ptrace"
+	"github.com/fredrikaugust/otelly/db"
 )
 
 type SpanTableModel struct {
+	spans      []db.Span
 	tableModel *table.Model
 
 	width  int
 	height int
 
-	rootSpans []*ptrace.Span
+	db *db.Database
 }
 
 func (s SpanTableModel) Init() tea.Cmd {
 	return nil
 }
 
-func CreateSpanTableModel() *SpanTableModel {
+func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 	cols := []table.Column{
 		{
 			Title: "Name",
@@ -50,42 +49,40 @@ func CreateSpanTableModel() *SpanTableModel {
 	)
 
 	return &SpanTableModel{
-		rootSpans:  make([]*ptrace.Span, 0),
 		tableModel: &tableModel,
+		db:         db,
 	}
 }
 
-func SpanToRow(span ptrace.Span) table.Row {
-	return []string{span.SpanID().String(), span.Name(), span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).String()}
-}
-
-type MessageNewRootSpan struct {
-	Span         *ptrace.Span
-	ResourceName string
-}
+type MessageUpdateRootSpanRows struct{}
 
 func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
+	cmds := make([]tea.Cmd, 0)
 	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
-	case MessageNewRootSpan:
-		s.rootSpans = append(s.rootSpans, msg.Span)
-		s.tableModel.SetRows(
-			append(
-				s.tableModel.Rows(),
-				table.Row{
-					msg.Span.Name(),
-					msg.ResourceName,
-					msg.Span.StartTimestamp().AsTime().Format("15:04:05.000"),
-					msg.Span.EndTimestamp().AsTime().Sub(msg.Span.StartTimestamp().AsTime()).String(),
-				},
-			),
-		)
+	switch msg.(type) {
+	case MessageUpdateRootSpanRows:
+		s.spans = s.db.GetSpans()
+		rows := make([]table.Row, 0)
+		for _, span := range s.spans {
+			rows = append(rows, table.Row{span.ID, span.Name, "", ""})
+		}
+		s.tableModel.SetRows(rows)
 	}
 
 	*s.tableModel, cmd = s.tableModel.Update(msg)
+	cmds = append(cmds, cmd)
 
-	return s, cmd
+	if selectedSpanID := s.SelectedSpan(); selectedSpanID != "" {
+		cmds = append(
+			cmds,
+			func() tea.Msg {
+				return MessageSetSelectedSpan{SpanID: selectedSpanID}
+			},
+		)
+	}
+
+	return s, tea.Batch(cmds...)
 }
 
 func (s SpanTableModel) View() string {
@@ -98,19 +95,21 @@ func (s SpanTableModel) View() string {
 
 func (s *SpanTableModel) SetHeight(h int) {
 	s.height = h
+	s.tableModel.SetHeight(s.height - 1)
 }
 
 func (s *SpanTableModel) SetWidth(w int) {
 	s.width = w
+	s.tableModel.SetWidth(s.width)
 }
 
-// SelectedSpan returns the span, true if a span is selected
-// and nil, false if not.
-func (s SpanTableModel) SelectedSpan() (*ptrace.Span, bool) {
-	idx := s.tableModel.Cursor()
-	slog.Info("cursor", "pos", idx, "rootspanlen", len(s.rootSpans))
-	if idx >= len(s.rootSpans) || idx < 0 {
-		return nil, false
+// SelectedSpan returns the spanID if it exists,
+// and "" if not
+func (s SpanTableModel) SelectedSpan() string {
+	selectedRow := s.tableModel.SelectedRow()
+	if selectedRow == nil {
+		return ""
 	}
-	return s.rootSpans[idx], true
+
+	return selectedRow[0]
 }

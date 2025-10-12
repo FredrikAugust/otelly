@@ -6,13 +6,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/bus"
+	"github.com/fredrikaugust/otelly/db"
 )
 
-func Start(ctx context.Context, bus *bus.TransportBus) error {
+func Start(ctx context.Context, bus *bus.TransportBus, db *db.Database) error {
 	slog.Info("initializing and running UI")
 
 	p := tea.NewProgram(
-		NewModel(bus),
+		NewModel(bus, db),
 		tea.WithAltScreen(),
 		tea.WithContext(ctx),
 	)
