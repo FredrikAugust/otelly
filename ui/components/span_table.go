@@ -67,7 +67,7 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 		s.spans = s.db.GetSpans()
 		rows := make([]table.Row, 0)
 		for _, span := range s.spans {
-			rows = append(rows, table.Row{span.ID, span.Name, "", ""})
+			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.String()})
 		}
 		s.tableModel.SetRows(rows)
 	}
@@ -115,5 +115,5 @@ func (s SpanTableModel) SelectedSpanID() string {
 		return ""
 	}
 
-	return selectedRow[0]
+	return s.spans[s.tableModel.Cursor()].ID
 }

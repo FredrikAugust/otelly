@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/db"
@@ -11,6 +12,7 @@ import (
 	"github.com/fredrikaugust/otelly/ui"
 	slogzap "github.com/samber/slog-zap/v2"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
@@ -54,6 +56,10 @@ func configureLogging() func() error {
 	defer logFile.Close()
 
 	logCfg := zap.NewDevelopmentConfig()
+	logCfg.EncoderConfig.EncodeTime = func(t time.Time, pae zapcore.PrimitiveArrayEncoder) {
+		pae.AppendString(t.Format("15:04:05.000"))
+	}
+	logCfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	logCfg.OutputPaths = []string{
 		"./debug.log",
 	}

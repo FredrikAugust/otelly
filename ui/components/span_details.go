@@ -49,7 +49,7 @@ func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 
 		spanWithResource, err := s.db.GetSpan(msg.SpanID)
 		if err != nil {
-			slog.Warn("could not get span with resource in span details", "spanID", msg.SpanID)
+			slog.Warn("could not get span with resource in span details", "spanID", msg.SpanID, "error", err)
 		} else {
 			s.span = spanWithResource
 		}

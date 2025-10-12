@@ -42,7 +42,7 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 				span.SpanID().String(),
 				span.Name(),
 				span.StartTimestamp().AsTime(),
-				span.EndTimestamp().AsTime(),
+				span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).Milliseconds(),
 				span.TraceID().String(),
 				span.ParentSpanID().String(),
 				resID,
@@ -60,7 +60,7 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 func (d *Database) GetSpan(id string) (*Span, error) {
 	var span Span
 
-	err := d.sqlDB.Get(&span, `SELECT id, name FROM span WHERE id = $1`, id)
+	err := d.sqlDB.Get(&span, `SELECT trace_id, id, name, start_time, duration_ms FROM span WHERE id = $1`, id)
 	if err != nil {
 		slog.Warn("failed to get span", "spanID", id)
 		return nil, err
@@ -73,8 +73,21 @@ func (d *Database) GetSpan(id string) (*Span, error) {
 
 func (d *Database) GetSpans() []Span {
 	spans := make([]Span, 0)
-	err := d.sqlDB.Select(&spans, `SELECT id, name FROM span`)
+	err := d.sqlDB.Select(
+		&spans,
+		`SELECT
+							s.trace_id,
+							s.id,
+							s.name,
+							s.start_time,
+							s.duration_ms,
+							r.service_name
+						FROM
+							span s
+						LEFT JOIN resource r ON s.resource_id = r.id`,
+	)
 	if err != nil {
+		slog.Warn("could not get spans", "error", err)
 		return spans
 	}
 

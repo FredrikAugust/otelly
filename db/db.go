@@ -44,7 +44,7 @@ func (d *Database) Migrate(ctx context.Context) error {
 			id VARCHAR PRIMARY KEY,
 			name VARCHAR,
 			start_time TIMESTAMP,
-			end_time TIMESTAMP,
+			duration_ms INTEGER,
 			trace_id VARCHAR,
 			parent_span_id VARCHAR,
 			resource_id VARCHAR,
