@@ -30,10 +30,4 @@ tasks:
   ingest-dummy-data:
     desc: Use antithesishq/otel-datagen to ingest dummy data
     cmd: |
-      otel-datagen generate traces \
-        --num-traces=50 \
-        --num-spans=3 \
-        --timestamp-start="-6m" \
-        --timestamp-spacing="20s" \
-        --otlp-endpoint=localhost:4317 \
-        --resource-attr="service.name=order-processor"
+      otelgen --otel-exporter-otlp-endpoint localhost:4317 --insecure --rate 1 --duration 30 -s microservice traces multi
