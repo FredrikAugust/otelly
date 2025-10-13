@@ -1,5 +1,7 @@
 # Otelly
 
+[![CI](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml/badge.svg)](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml)
+
 A TUI for viewing and debugging with OTEL signals locally.
 
 ![a screenshot showing otelly in action](./assets/screenshot.png)
