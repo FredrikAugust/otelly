@@ -69,22 +69,35 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 	return nil
 }
 
+func (d *Database) Clear() error {
+	_, err := d.sqlDB.Exec(`TRUNCATE TABLE span`)
+	if err != nil {
+		return err
+	}
+	_, err = d.sqlDB.Exec(`TRUNCATE TABLE resource`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (d *Database) GetSpan(id string) (*Span, error) {
 	var span Span
 
 	err := d.sqlDB.Get(
 		&span,
 		`SELECT
-							trace_id,
-							id,
-							name,
-							start_time,
-							attributes,
-							duration_ns,
-							resource_id,
-						FROM
-							span
-						WHERE id = $1`,
+			trace_id,
+			id,
+			name,
+			start_time,
+			attributes,
+			duration_ns,
+			resource_id,
+		FROM
+			span
+		WHERE id = $1`,
 		id,
 	)
 	if err != nil {

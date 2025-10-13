@@ -52,11 +52,17 @@ type MessageSetSelectedSpan struct {
 	SpanID string
 }
 
+type MessageResetDetail struct{}
+
 func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 	var cmd tea.Cmd
 	cmds := make([]tea.Cmd, 0)
 
 	switch msg := msg.(type) {
+	case MessageResetDetail:
+		s.span = nil
+		s.spanAttributeModel.attributes = nil
+		s.resourceModel.resource = nil
 	case MessageSetSelectedSpan:
 		if s.span != nil && msg.SpanID == s.span.ID {
 			// Don't query the span again when we already have it
@@ -66,14 +72,12 @@ func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 		span, err := s.db.GetSpan(msg.SpanID)
 		if err != nil {
 			slog.Warn("could not get span with resource in span details", "spanID", msg.SpanID, "error", err)
-			return s, nil
 		}
 
 		s.span = span
 		res, err := s.db.GetResource(span.ResourceID)
 		if err != nil {
 			slog.Warn("could not get resource", "error", err)
-			return s, nil
 		}
 
 		s.spanAttributeModel.attributes = s.span.Attributes

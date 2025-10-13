@@ -4,6 +4,7 @@ package components
 import (
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -64,7 +65,7 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 
 	selection := s.SelectedSpanID()
 
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case MessageUpdateRootSpanRows:
 		s.spans = s.db.GetRootSpans()
 		rows := make([]table.Row, 0)
@@ -72,14 +73,25 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.Round(time.Millisecond).String()})
 		}
 		s.table.SetRows(rows)
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+l":
+			s.db.Clear()
+			s.table.SetCursor(0)
+			s.spans = make([]db.Span, 0)
+			s.table.SetRows(make([]table.Row, 0))
+			cmds = append(cmds, func() tea.Msg { return MessageResetDetail{} })
+		}
 	}
 
 	*s.table, cmd = s.table.Update(msg)
 	cmds = append(cmds, cmd)
 
-	newSelection := s.SelectedSpanID()
-	if selection != newSelection {
-		cmds = append(cmds, setSelectedSpanCmd(newSelection))
+	if len(s.spans) > 0 {
+		newSelection := s.SelectedSpanID()
+		if selection != newSelection {
+			cmds = append(cmds, setSelectedSpanCmd(newSelection))
+		}
 	}
 
 	return s, tea.Batch(cmds...)
@@ -95,7 +107,14 @@ func (s SpanTableModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		lipgloss.NewStyle().Height(s.height-1).Render(s.table.View()),
-		lipgloss.NewStyle().Render(s.table.HelpView()),
+		lipgloss.NewStyle().PaddingLeft(1).Render(
+			s.table.Help.ShortHelpView(
+				append(
+					s.table.KeyMap.ShortHelp(),
+					key.NewBinding(key.WithKeys("ctrl+l"), key.WithHelp("ctrl+l", "clear data")),
+				),
+			),
+		),
 	)
 }
 

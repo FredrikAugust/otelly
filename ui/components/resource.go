@@ -85,7 +85,6 @@ func (s *ResourceModel) updateGraph() {
 	}
 
 	s.chart.Resize(s.width, 10)
-	s.chart.SetViewTimeRange(time.Now().Add(-10*time.Minute), time.Now())
 	s.chart.DrawBraille()
 }
 

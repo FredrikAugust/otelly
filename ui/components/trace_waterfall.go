@@ -82,15 +82,6 @@ func (m SpanWaterfallModel) View() string {
 			marginLeft -= 1
 		}
 
-		zap.L().Debug(
-			"pos",
-			zap.Int("width", width),
-			zap.Duration("span_duration", span.Duration),
-			zap.Duration("trace_duration", maxTime.Sub(minTime)),
-			zap.Int("window", m.width),
-			zap.Int("margin", marginLeft),
-		)
-
 		name := span.Name
 		if len(name) > width {
 			name = name[:width]
