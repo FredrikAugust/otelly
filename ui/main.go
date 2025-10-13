@@ -28,9 +28,8 @@ func Start(ctx context.Context, bus *bus.TransportBus, db *db.Database) error {
 
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
+		m.mainPageModel.Init(),
 		listenForNewSpans(m.bus.TraceBus),
-		m.spanDetails.Init(),
-		m.spanTable.Init(),
 		func() tea.Msg {
 			// In case we're runnign DB with file we can keep the seed around, and
 			// this will make it load into the UI immediately.

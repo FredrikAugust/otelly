@@ -3,15 +3,14 @@
 package ui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/db"
-	"github.com/fredrikaugust/otelly/ui/components"
-	"go.opentelemetry.io/collector/pdata/ptrace"
+	"github.com/fredrikaugust/otelly/ui/pages"
 )
 
 const (
 	PageMain = iota
+	PageTrace
 )
 
 type windowSize struct {
@@ -26,12 +25,11 @@ type Service struct {
 type Model struct {
 	currentPage int
 
+	mainPageModel  *pages.MainPageModel
+	tracePageModel *pages.TracePageModel
+
 	bus *bus.TransportBus
-
-	db *db.Database
-
-	spanTable   *components.SpanTableModel
-	spanDetails *components.SpanDetailsModel
+	db  *db.Database
 
 	windowSize *windowSize
 }
@@ -40,17 +38,11 @@ func NewModel(bus *bus.TransportBus, db *db.Database) *Model {
 	return &Model{
 		currentPage: PageMain,
 		bus:         bus,
-		spanTable:   components.CreateSpanTableModel(db),
-		spanDetails: components.CreateSpanDetailsModel(db),
 		db:          db,
 		windowSize: &windowSize{
 			0, 0,
 		},
-	}
-}
-
-func listenForNewSpans(spanChan chan ptrace.ResourceSpans) tea.Cmd {
-	return func() tea.Msg {
-		return messageResourceSpansArrived{resourceSpans: <-spanChan}
+		mainPageModel:  pages.CreateMainPageModel(db),
+		tracePageModel: pages.CreateTracePageModel(db),
 	}
 }

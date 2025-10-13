@@ -53,7 +53,6 @@ func configureLogging() func() error {
 		slog.Error("could not set up logger", "error", err)
 		os.Exit(1)
 	}
-	defer logFile.Close()
 
 	logCfg := zap.NewDevelopmentConfig()
 	logCfg.EncoderConfig.EncodeTime = func(t time.Time, pae zapcore.PrimitiveArrayEncoder) {

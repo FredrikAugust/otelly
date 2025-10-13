@@ -27,7 +27,15 @@ tasks:
       - go build -gcflags="all=-N -l" -o otelly ./cmd/app/main.go
       - ./otelly
 
+  logs:
+    desc: Tail the log file
+    cmd: tail -f debug.log
+
   ingest-dummy-data:
-    desc: Use antithesishq/otel-datagen to ingest dummy data
+    desc: Use otelgen to ingest dummy data
     cmd: |
       otelgen --otel-exporter-otlp-endpoint localhost:4317 --insecure --rate 1 --duration 30 -s microservice traces multi
+
+  test:
+    desc: Run tests
+    cmd: go test ./...

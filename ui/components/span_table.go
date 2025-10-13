@@ -59,6 +59,10 @@ func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 
 type MessageUpdateRootSpanRows struct{}
 
+type MessageGoToTrace struct {
+	TraceID string
+}
+
 func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	var cmd tea.Cmd
@@ -73,6 +77,7 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.Round(time.Millisecond).String()})
 		}
 		s.table.SetRows(rows)
+		// TODO: restore Cursor to selection
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+l":
@@ -81,6 +86,14 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 			s.spans = make([]db.Span, 0)
 			s.table.SetRows(make([]table.Row, 0))
 			cmds = append(cmds, func() tea.Msg { return MessageResetDetail{} })
+		case "enter":
+			if s.SelectedSpanID() != "" {
+				cmds = append(cmds, func() tea.Msg {
+					return MessageGoToTrace{
+						TraceID: s.spans[s.table.Cursor()].TraceID,
+					}
+				})
+			}
 		}
 	}
 

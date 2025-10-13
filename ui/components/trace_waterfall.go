@@ -97,6 +97,14 @@ func (m SpanWaterfallModel) View() string {
 		)
 	}
 
+	numLines := len(lines)
+
+	// Genius trick to avoid having to deal with singular/plural span(s) string
+	if numLines > 7 {
+		lines = lines[:5]
+		lines = append(lines, styling.TextSecondary.Render(fmt.Sprintf("+ %v more spans", numLines-5)))
+	}
+
 	return baseStyle.Render(
 		lipgloss.JoinVertical(
 			lipgloss.Left,

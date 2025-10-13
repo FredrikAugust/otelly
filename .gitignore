@@ -1,6 +1,13 @@
+# logs
 debug.log
 collector.log
 
+# binary
 otelly
+
+# duck db 🦆
 local.db
 local.db.wal
+
+# mac
+.DS_Store
