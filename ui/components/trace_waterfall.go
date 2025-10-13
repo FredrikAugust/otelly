@@ -8,16 +8,16 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
+	"github.com/fredrikaugust/otelly/ui/styling"
 	"go.uber.org/zap"
 )
 
 type SpanWaterfallModel struct {
 	traceID string
 
-	spans []db.Span
+	spans []db.GetSpansForTraceModel
 
-	width  int
-	height int
+	width int
 
 	db *db.Database
 }
@@ -110,7 +110,7 @@ func (m SpanWaterfallModel) View() string {
 		lipgloss.JoinVertical(
 			lipgloss.Left,
 			lipgloss.JoinHorizontal(
-				lipgloss.Top, lipgloss.NewStyle().Bold(true).MarginBottom(1).Render("Trace"), " ", lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Render(fmt.Sprintf("(%v)", maxTime.Sub(minTime))),
+				lipgloss.Top, styling.TextHeading.MarginBottom(1).Render("Trace"), " ", styling.TextSecondary.Render(fmt.Sprintf("(%v)", maxTime.Sub(minTime))),
 			),
 			lipgloss.JoinVertical(lipgloss.Left, lines...),
 		),

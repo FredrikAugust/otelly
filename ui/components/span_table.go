@@ -2,6 +2,8 @@
 package components
 
 import (
+	"time"
+
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -38,7 +40,7 @@ func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 		},
 		{
 			Title: "Duration",
-			Width: 10,
+			Width: 12,
 		},
 	}
 
@@ -64,11 +66,10 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 
 	switch msg.(type) {
 	case MessageUpdateRootSpanRows:
-		// TODO: this actually just gets all. we could just add db.GetRootSpans with a where clause
-		s.spans = s.db.GetSpans()
+		s.spans = s.db.GetRootSpans()
 		rows := make([]table.Row, 0)
 		for _, span := range s.spans {
-			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.String()})
+			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.Round(time.Millisecond).String()})
 		}
 		s.table.SetRows(rows)
 	}

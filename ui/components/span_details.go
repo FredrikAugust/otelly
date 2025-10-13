@@ -2,61 +2,49 @@ package components
 
 import (
 	"log/slog"
-	"reflect"
-	"sort"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
-	"go.uber.org/zap"
-
-	tslc "github.com/NimbleMarkets/ntcharts/linechart/timeserieslinechart"
+	"github.com/fredrikaugust/otelly/ui/styling"
 )
 
 type SpanDetailsModel struct {
-	span     *db.Span
-	resource *db.Resource
+	span *db.Span
 
-	resourceSpanHistory []db.SpansPerMinuteBucket
+	resourceSpanHistory []db.SpansPerMinuteForServiceModel
 
 	width  int
 	height int
 
-	chart tslc.Model
-
 	db *db.Database
 
-	waterfallModel *SpanWaterfallModel
+	waterfallModel     *SpanWaterfallModel
+	spanAttributeModel *SpanAttributeModel
+	resourceModel      *ResourceModel
 }
 
 // Init implements tea.Model.
 func (s SpanDetailsModel) Init() tea.Cmd {
 	return tea.Batch(
-		func() tea.Msg {
-			return MessageUpdateGraph{}
-		},
 		s.waterfallModel.Init(),
+		s.spanAttributeModel.Init(),
+		s.resourceModel.Init(),
 	)
 }
 
 func CreateSpanDetailsModel(db *db.Database) *SpanDetailsModel {
 	return &SpanDetailsModel{
-		span:     nil,
-		resource: nil,
-
-		chart: tslc.New(
-			30, 10,
-			tslc.WithUpdateHandler(tslc.SecondUpdateHandler(60)),
-			tslc.WithXLabelFormatter(tslc.HourTimeLabelFormatter()),
-		),
+		span: nil,
 
 		db: db,
 
 		width:  0,
 		height: 0,
 
-		waterfallModel: CreateSpanWaterfallModel(db),
+		waterfallModel:     CreateSpanWaterfallModel(db),
+		spanAttributeModel: CreateSpanAttributeModel(),
+		resourceModel:      CreateResourceModel(db),
 	}
 }
 
@@ -64,9 +52,8 @@ type MessageSetSelectedSpan struct {
 	SpanID string
 }
 
-type MessageUpdateGraph struct{}
-
 func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
+	var cmd tea.Cmd
 	cmds := make([]tea.Cmd, 0)
 
 	switch msg := msg.(type) {
@@ -89,45 +76,20 @@ func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 			return s, nil
 		}
 
-		s.resource = res
-
-		s.updateGraph()
-	case MessageUpdateGraph:
-		// TODO: we trigger downstream updates due to this message. we should move to its own component
-		cmds = append(cmds, tea.Tick(5*time.Second, func(t time.Time) tea.Msg {
-			return MessageUpdateGraph{}
-		}))
-		s.updateGraph()
+		s.spanAttributeModel.attributes = s.span.Attributes
+		s.resourceModel.resource = res
 	}
 
-	s.chart, _ = s.chart.Update(msg)
-	if s.resourceSpanHistory != nil {
-		s.chart.Resize(s.width-4, 10)
-		s.chart.SetViewTimeRange(time.Now().Add(-10*time.Minute), time.Now())
-		s.chart.DrawBraille()
-	}
-
-	var cmd tea.Cmd
 	*s.waterfallModel, cmd = s.waterfallModel.Update(msg)
 	cmds = append(cmds, cmd)
 
+	*s.spanAttributeModel, cmd = s.spanAttributeModel.Update(msg)
+	cmds = append(cmds, cmd)
+
+	*s.resourceModel, cmd = s.resourceModel.Update(msg)
+	cmds = append(cmds, cmd)
+
 	return s, tea.Batch(cmds...)
-}
-
-func (s *SpanDetailsModel) updateGraph() {
-	if s.resource == nil {
-		return
-	}
-	var err error
-	s.resourceSpanHistory, err = s.db.SpansPerMinuteForService(s.resource.ID)
-	if err != nil {
-		zap.L().Warn("could not get span history for svc", zap.String("id", s.resource.ID), zap.Error(err))
-	}
-
-	s.chart.ClearAllData()
-	for _, history := range s.resourceSpanHistory {
-		s.chart.Push(tslc.TimePoint{Time: history.Timestamp, Value: float64(history.SpanCount)})
-	}
 }
 
 func (s SpanDetailsModel) View() string {
@@ -139,7 +101,7 @@ func (s SpanDetailsModel) View() string {
 		Padding(0, 1)
 
 	if s.span == nil {
-		return box.Foreground(lipgloss.Color("#afafb2")).Align(lipgloss.Center, lipgloss.Center).Render("No span selected")
+		return box.Foreground(styling.ColorSecondary).Align(lipgloss.Center, lipgloss.Center).Render("No span selected")
 	}
 
 	return box.
@@ -147,93 +109,23 @@ func (s SpanDetailsModel) View() string {
 			lipgloss.Left,
 			lipgloss.JoinHorizontal(
 				lipgloss.Top,
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#6b6b6e")).Render("Span "),
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Render(s.span.ID),
+				styling.TextTertiary.Render("Span "),
+				styling.TextSecondary.Render(s.span.ID),
 			),
 			lipgloss.NewStyle().Bold(true).Render(s.span.Name),
 			s.waterfallModel.View(),
-			s.attributeView(),
-			s.resourceView(),
+			s.spanAttributeModel.View(),
+			s.resourceModel.View(),
 		))
-}
-
-func (s SpanDetailsModel) resourceView() string {
-	baseStyle := lipgloss.NewStyle().
-		Width(s.width - 4).
-		MarginTop(1)
-
-	if s.resource == nil {
-		return baseStyle.Render("No resource found")
-	}
-
-	return baseStyle.Render(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			lipgloss.NewStyle().Bold(true).Render("Resource"),
-			lipgloss.JoinVertical(
-				lipgloss.Left,
-				lipgloss.JoinHorizontal(lipgloss.Top,
-					lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Render("Service "),
-					s.resource.ServiceNamespace,
-					".",
-					s.resource.ServiceName,
-				),
-				lipgloss.NewStyle().
-					MarginTop(1).
-					Render(
-						s.chart.View(),
-					),
-			),
-		),
-	)
-}
-
-func (s SpanDetailsModel) attributeView() string {
-	attributeStrs := make([]string, 0)
-
-	keys := make([]string, 0)
-	for k := range s.span.Attributes {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		v := s.span.Attributes[k]
-
-		// Only show strings
-		if reflect.TypeOf(v) != reflect.TypeFor[string]() {
-			continue
-		}
-
-		attributeStrs = append(
-			attributeStrs,
-			lipgloss.JoinHorizontal(
-				lipgloss.Top,
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#afafb2")).Width(24).Render(k),
-				" ",
-				lipgloss.NewStyle().Render(v.(string)),
-			),
-		)
-	}
-
-	return lipgloss.NewStyle().
-		Width(s.width - 4).
-		MarginTop(1).
-		Render(
-			lipgloss.JoinVertical(
-				lipgloss.Left,
-				lipgloss.NewStyle().Bold(true).Render("Attributes"),
-				lipgloss.JoinVertical(lipgloss.Left, attributeStrs...),
-			),
-		)
 }
 
 func (s *SpanDetailsModel) SetWidth(w int) {
 	s.width = w
 	s.waterfallModel.width = w - 4
+	s.spanAttributeModel.width = w - 4
+	s.resourceModel.width = w - 4
 }
 
 func (s *SpanDetailsModel) SetHeight(h int) {
 	s.height = h
-	s.waterfallModel.height = h
 }

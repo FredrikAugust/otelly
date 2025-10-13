@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -52,9 +53,9 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 				span.StartTimestamp().AsTime(),
 				span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).Nanoseconds(),
 				span.TraceID().String(),
-				span.ParentSpanID().String(),
+				sql.NullString{String: span.ParentSpanID().String(), Valid: !span.ParentSpanID().IsEmpty()},
 				span.Status().Code().String(),
-				span.Status().Message(),
+				sql.NullString{String: span.Status().Code().String(), Valid: span.Status().Message() != ""},
 				attrs,
 				resID,
 			)
@@ -145,12 +146,43 @@ func (d *Database) GetSpans() []Span {
 	return spans
 }
 
-type SpansPerMinuteBucket struct {
+func (d *Database) GetRootSpans() []Span {
+	spans := make([]Span, 0)
+	err := d.sqlDB.Select(
+		&spans,
+		`SELECT
+							s.trace_id,
+							s.id,
+							s.name,
+							s.start_time,
+							s.duration_ns,
+							s.status_code,
+							s.attributes,
+							r.service_name
+						FROM
+							span s
+						LEFT JOIN resource r ON s.resource_id = r.id
+						WHERE
+							s.parent_span_id IS NULL
+						ORDER BY
+							s.start_time DESC`,
+	)
+	if err != nil {
+		slog.Warn("could not get spans", "error", err)
+		return spans
+	}
+
+	slog.Debug("got spans", "len", len(spans))
+
+	return spans
+}
+
+type SpansPerMinuteForServiceModel struct {
 	Timestamp time.Time `db:"bucket_start"`
 	SpanCount int       `db:"span_count"`
 }
 
-func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteBucket, error) {
+func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteForServiceModel, error) {
 	query := `
 	SELECT
 		date_trunc('minute', start_time) as bucket_start,
@@ -167,7 +199,7 @@ func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteBucket,
 		bucket_start DESC
 	`
 
-	res := make([]SpansPerMinuteBucket, 0)
+	res := make([]SpansPerMinuteForServiceModel, 0)
 
 	err := d.sqlDB.Select(&res, query, svc)
 	if err != nil {
@@ -179,16 +211,26 @@ func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteBucket,
 	return res, nil
 }
 
-func (d *Database) GetSpansForTrace(traceID string) ([]Span, error) {
+type GetSpansForTraceModel struct {
+	Name      string        `db:"name"`
+	StartTime time.Time     `db:"start_time"`
+	Duration  time.Duration `db:"duration_ns"`
+}
+
+func (d *Database) GetSpansForTrace(traceID string) ([]GetSpansForTraceModel, error) {
 	query := `
 	SELECT
-		*
+		start_time,
+		name,
+		duration_ns
 	FROM
 		span
 	WHERE
-		trace_id = $1`
+		trace_id = $1
+	ORDER BY
+		start_time`
 
-	res := make([]Span, 0)
+	res := make([]GetSpansForTraceModel, 0)
 
 	err := d.sqlDB.Select(&res, query, traceID)
 	if err != nil {
