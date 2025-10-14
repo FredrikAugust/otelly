@@ -35,6 +35,12 @@ state or use the application "clear state" feature (`ctrl+l` from table view).
 This will be changed before the first release so you can choose if you want
 persistence or not.
 
+## Features
+
+### TODOs
+
+- [ ] after migrating to only returning new models, we need to re-work how we handle sizing
+
 > [!NOTE]  
 > This projects is partially intended as a learning project, and as such use of
 > AI is kept to a minimum.

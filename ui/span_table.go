@@ -1,5 +1,4 @@
-// Package components contain UI elements used throughout the app
-package components
+package ui
 
 import (
 	"time"
@@ -9,12 +8,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
-	"github.com/fredrikaugust/otelly/ui/styling"
 )
 
 type SpanTableModel struct {
 	spans []db.Span
-	table *table.Model
+	table table.Model
 
 	width  int
 	height int
@@ -26,7 +24,7 @@ func (s SpanTableModel) Init() tea.Cmd {
 	return nil
 }
 
-func CreateSpanTableModel(db *db.Database) *SpanTableModel {
+func CreateSpanTableModel(db *db.Database) SpanTableModel {
 	cols := []table.Column{
 		{
 			Title: "Name",
@@ -50,22 +48,16 @@ func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 		table.WithColumns(cols),
 		table.WithFocused(true),
 		table.WithStyles(table.Styles{
-			Selected: lipgloss.NewStyle().Bold(true).Background(styling.ColorAccent),
+			Selected: lipgloss.NewStyle().Bold(true).Background(ColorAccent),
 			Header:   lipgloss.NewStyle().Bold(true),
 			Cell:     lipgloss.NewStyle(),
 		}),
 	)
 
-	return &SpanTableModel{
-		table: &tableModel,
+	return SpanTableModel{
+		table: tableModel,
 		db:    db,
 	}
-}
-
-type MessageUpdateRootSpanRows struct{}
-
-type MessageGoToTrace struct {
-	TraceID string
 }
 
 func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
@@ -102,7 +94,7 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 		}
 	}
 
-	*s.table, cmd = s.table.Update(msg)
+	s.table, cmd = s.table.Update(msg)
 	cmds = append(cmds, cmd)
 
 	if len(s.spans) > 0 {

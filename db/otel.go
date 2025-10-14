@@ -231,6 +231,7 @@ type GetSpansForTraceModel struct {
 	StartTime    time.Time      `db:"start_time"`
 	Duration     time.Duration  `db:"duration_ns"`
 	ParentSpanID sql.NullString `db:"parent_span_id"`
+	Attributes   map[string]any `db:"attributes"`
 	ServiceName  string         `db:"service_name"`
 }
 
@@ -243,6 +244,7 @@ func (d *Database) GetSpansForTrace(traceID string) ([]GetSpansForTraceModel, er
 		s.name,
 		s.parent_span_id,
 		s.duration_ns,
+		s.attributes,
 		r.service_name
 	FROM
 		span s

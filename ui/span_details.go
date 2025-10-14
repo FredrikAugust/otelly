@@ -1,4 +1,4 @@
-package components
+package ui
 
 import (
 	"log/slog"
@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
-	"github.com/fredrikaugust/otelly/ui/styling"
 )
 
 type SpanDetailsModel struct {
@@ -19,9 +18,9 @@ type SpanDetailsModel struct {
 
 	db *db.Database
 
-	waterfallModel     *SpanWaterfallModel
-	spanAttributeModel *SpanAttributeModel
-	resourceModel      *ResourceModel
+	waterfallModel     SpanWaterfallModel
+	spanAttributeModel SpanAttributeModel
+	resourceModel      ResourceModel
 }
 
 // Init implements tea.Model.
@@ -33,8 +32,8 @@ func (s SpanDetailsModel) Init() tea.Cmd {
 	)
 }
 
-func CreateSpanDetailsModel(db *db.Database) *SpanDetailsModel {
-	return &SpanDetailsModel{
+func CreateSpanDetailsModel(db *db.Database) SpanDetailsModel {
+	return SpanDetailsModel{
 		span: nil,
 
 		db: db,
@@ -47,12 +46,6 @@ func CreateSpanDetailsModel(db *db.Database) *SpanDetailsModel {
 		resourceModel:      CreateResourceModel(db),
 	}
 }
-
-type MessageSetSelectedSpan struct {
-	SpanID string
-}
-
-type MessageResetDetail struct{}
 
 func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 	var cmd tea.Cmd
@@ -81,16 +74,16 @@ func (s SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 		}
 
 		s.spanAttributeModel.attributes = s.span.Attributes
-		s.resourceModel.resource = res
+		s.resourceModel.SetResource(res)
 	}
 
-	*s.waterfallModel, cmd = s.waterfallModel.Update(msg)
+	s.waterfallModel, cmd = s.waterfallModel.Update(msg)
 	cmds = append(cmds, cmd)
 
-	*s.spanAttributeModel, cmd = s.spanAttributeModel.Update(msg)
+	s.spanAttributeModel, cmd = s.spanAttributeModel.Update(msg)
 	cmds = append(cmds, cmd)
 
-	*s.resourceModel, cmd = s.resourceModel.Update(msg)
+	s.resourceModel, cmd = s.resourceModel.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return s, tea.Batch(cmds...)
@@ -105,7 +98,7 @@ func (s SpanDetailsModel) View() string {
 		Padding(0, 1)
 
 	if s.span == nil {
-		return box.Foreground(styling.ColorSecondary).Align(lipgloss.Center, lipgloss.Center).Render("No span selected")
+		return box.Foreground(ColorSecondary).Align(lipgloss.Center, lipgloss.Center).Render("No span selected")
 	}
 
 	return box.
@@ -113,12 +106,13 @@ func (s SpanDetailsModel) View() string {
 			lipgloss.Left,
 			lipgloss.JoinHorizontal(
 				lipgloss.Top,
-				styling.TextTertiary.Render("Span "),
-				styling.TextSecondary.Render(s.span.ID),
+				TextTertiary.Render("Span "),
+				TextSecondary.Render(s.span.ID),
 			),
 			lipgloss.NewStyle().Bold(true).Render(s.span.Name),
 			s.waterfallModel.View(),
-			s.spanAttributeModel.View(),
+			"",
+			s.spanAttributeModel.View(s.width-4),
 			s.resourceModel.View(),
 		))
 }
@@ -126,8 +120,7 @@ func (s SpanDetailsModel) View() string {
 func (s *SpanDetailsModel) SetWidth(w int) {
 	s.width = w
 	s.waterfallModel.width = w - 4
-	s.spanAttributeModel.width = w - 4
-	s.resourceModel.width = w - 4
+	s.resourceModel.SetWidth(w - 4)
 }
 
 func (s *SpanDetailsModel) SetHeight(h int) {

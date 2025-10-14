@@ -1,4 +1,4 @@
-package components
+package ui
 
 import (
 	"reflect"
@@ -6,18 +6,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/fredrikaugust/otelly/ui/styling"
 )
 
 type SpanAttributeModel struct {
-	width int
-
 	attributes map[string]any
 }
 
-func CreateSpanAttributeModel() *SpanAttributeModel {
-	return &SpanAttributeModel{
-		width:      0,
+func CreateSpanAttributeModel() SpanAttributeModel {
+	return SpanAttributeModel{
 		attributes: nil,
 	}
 }
@@ -30,7 +26,11 @@ func (s SpanAttributeModel) Update(msg tea.Msg) (SpanAttributeModel, tea.Cmd) {
 	return s, nil
 }
 
-func (s SpanAttributeModel) View() string {
+func (s *SpanAttributeModel) SetAttributes(attributes map[string]any) {
+	s.attributes = attributes
+}
+
+func (s SpanAttributeModel) View(w int) string {
 	attributeStrs := make([]string, 0)
 
 	keys := make([]string, 0)
@@ -51,7 +51,7 @@ func (s SpanAttributeModel) View() string {
 			attributeStrs,
 			lipgloss.JoinHorizontal(
 				lipgloss.Top,
-				styling.TextSecondary.Width(24).Render(k),
+				TextSecondary.Width(30).Render(k),
 				" ",
 				lipgloss.NewStyle().Render(v.(string)),
 			),
@@ -59,12 +59,11 @@ func (s SpanAttributeModel) View() string {
 	}
 
 	return lipgloss.NewStyle().
-		Width(s.width).
-		MarginTop(1).
+		Width(w).
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Left,
-				styling.TextHeading.Render("Attributes"),
+				TextHeading.Render("Attributes"),
 				lipgloss.JoinVertical(lipgloss.Left, attributeStrs...),
 			),
 		)

@@ -1,4 +1,4 @@
-package components
+package ui
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
-	"github.com/fredrikaugust/otelly/ui/styling"
 	"go.uber.org/zap"
 )
 
@@ -22,8 +21,8 @@ type SpanWaterfallModel struct {
 	db *db.Database
 }
 
-func CreateSpanWaterfallModel(db *db.Database) *SpanWaterfallModel {
-	return &SpanWaterfallModel{db: db}
+func CreateSpanWaterfallModel(db *db.Database) SpanWaterfallModel {
+	return SpanWaterfallModel{db: db}
 }
 
 func (m SpanWaterfallModel) Update(msg tea.Msg) (SpanWaterfallModel, tea.Cmd) {
@@ -60,14 +59,14 @@ func (m SpanWaterfallModel) View() string {
 	// Genius trick to avoid having to deal with singular/plural span(s) string
 	if numLines > 7 {
 		lines = lines[:5]
-		lines = append(lines, styling.TextSecondary.Render(fmt.Sprintf("+ %v more spans", numLines-5)))
+		lines = append(lines, TextSecondary.Render(fmt.Sprintf("+ %v more spans", numLines-5)))
 	}
 
 	return baseStyle.Render(
 		lipgloss.JoinVertical(
 			lipgloss.Left,
 			lipgloss.JoinHorizontal(
-				lipgloss.Top, styling.TextHeading.MarginBottom(1).Render("Trace"), " ", styling.TextSecondary.Render(fmt.Sprintf("(%v)", maxTime.Sub(minTime))),
+				lipgloss.Top, TextHeading.MarginBottom(1).Render("Trace"), " ", TextSecondary.Render(fmt.Sprintf("(%v)", maxTime.Sub(minTime))),
 			),
 			lipgloss.JoinVertical(lipgloss.Left, lines...),
 		),
@@ -114,7 +113,7 @@ func WaterfallLinesForSpans(w int, spans []db.GetSpansForTraceModel, lineContent
 			lipgloss.NewStyle().
 				Width(width).
 				MarginLeft(marginLeft).
-				Background(styling.ColorAccent).
+				Background(ColorAccent).
 				Render(body),
 		)
 	}

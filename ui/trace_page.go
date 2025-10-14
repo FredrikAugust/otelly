@@ -1,4 +1,4 @@
-package pages
+package ui
 
 import (
 	"fmt"
@@ -11,8 +11,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
-	"github.com/fredrikaugust/otelly/ui/components"
-	"github.com/fredrikaugust/otelly/ui/styling"
 )
 
 type TracePageModel struct {
@@ -26,6 +24,8 @@ type TracePageModel struct {
 	help   help.Model
 
 	cursor int
+
+	spanAttributeModel SpanAttributeModel
 }
 
 // FullHelp implements help.KeyMap.
@@ -38,8 +38,8 @@ func (m TracePageModel) ShortHelp() []key.Binding {
 	return m.keyMap
 }
 
-func CreateTracePageModel(db *db.Database) *TracePageModel {
-	return &TracePageModel{
+func CreateTracePageModel(db *db.Database) TracePageModel {
+	return TracePageModel{
 		db:      db,
 		spinner: spinner.New(spinner.WithSpinner(spinner.Points)),
 		cursor:  0,
@@ -48,8 +48,10 @@ func CreateTracePageModel(db *db.Database) *TracePageModel {
 			table.DefaultKeyMap().LineDown,
 			table.DefaultKeyMap().GotoTop,
 			table.DefaultKeyMap().GotoBottom,
+			key.NewBinding(key.WithKeys("q", "esc"), key.WithHelp("q", "back")),
 		},
-		help: help.New(),
+		help:               help.New(),
+		spanAttributeModel: CreateSpanAttributeModel(),
 	}
 }
 
@@ -57,15 +59,13 @@ func (m TracePageModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
-type MessageReturnToMainPage struct{}
-
 func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "esc":
+		case "esc", "ctrl+c", "q":
 			cmds = append(cmds, func() tea.Msg { return MessageReturnToMainPage{} })
 		case "j", "down":
 			if m.cursor != len(m.spans)-1 {
@@ -80,12 +80,15 @@ func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 		case "G":
 			m.cursor = len(m.spans) - 1
 		}
-	case components.MessageGoToTrace:
+	case MessageGoToTrace:
 		res, err := m.db.GetSpansForTrace(msg.TraceID)
 		if err == nil {
 			m.spans = res
 		}
 	}
+
+	selectedSpan := m.spans[m.cursor]
+	m.spanAttributeModel.SetAttributes(selectedSpan.Attributes)
 
 	return m, tea.Batch(cmds...)
 }
@@ -105,28 +108,30 @@ func (m TracePageModel) View(w, h int) string {
 	row := 0
 
 	hierarchicalView := treeView(tree, &row, &m.cursor, nil)
-	startTime, endTime, waterfallView := components.WaterfallLinesForSpans(w-lipgloss.Width(hierarchicalView), m.spans, func(span *db.GetSpansForTraceModel) string { return "" })
+	startTime, endTime, waterfallView := WaterfallLinesForSpans(
+		container.GetWidth()-lipgloss.Width(hierarchicalView)-5,
+		m.spans,
+		func(span *db.GetSpansForTraceModel) string { return "" },
+	)
 
 	return container.Render(
-		lipgloss.JoinVertical(
-			0,
+		lipgloss.JoinVertical(0,
 			header(tree.span.TraceID, tree.span.Name, startTime, endTime),
 			"",
 			lipgloss.JoinHorizontal(0,
-				lipgloss.NewStyle().Render(lipgloss.JoinVertical(
-					0,
-					lipgloss.NewStyle().Height(h-1-4).Render( // help text and header
-						lipgloss.JoinVertical(
-							lipgloss.Left,
-							lipgloss.JoinVertical(
-								lipgloss.Left,
-								hierarchicalView,
-							),
-						),
+				lipgloss.JoinVertical(0,
+					lipgloss.JoinVertical(0,
+						hierarchicalView,
 					),
-					m.help.View(m),
-				)),
-				lipgloss.JoinVertical(0, waterfallView...),
+				),
+				lipgloss.NewStyle().Width(5).Render(""),
+				lipgloss.JoinVertical(0.0, waterfallView...),
+			),
+			m.help.View(m),
+			"",
+			lipgloss.JoinHorizontal(0,
+				"resource",
+				m.spanAttributeModel.View(w),
 			),
 		),
 	)
@@ -134,18 +139,18 @@ func (m TracePageModel) View(w, h int) string {
 
 func header(traceID, name string, start, end time.Time) string {
 	return lipgloss.JoinVertical(lipgloss.Top,
-		styling.TextTertiary.Render(traceID),
+		TextTertiary.Render("#"+traceID),
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			styling.TextSecondary.Render("Trace "),
-			styling.TextHeading.Render(name),
+			TextSecondary.Render("Trace "),
+			TextHeading.Render(name),
 		),
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			styling.TextSecondary.Render(start.Format("2006-01-02 15:04:05")),
-			styling.TextTertiary.Render(" — "),
-			styling.TextSecondary.Render(end.Format("2006-01-02 15:04:05")),
-			styling.TextSecondary.Render(" ("+end.Sub(start).Round(time.Millisecond).String()+")"),
+			TextSecondary.Render(start.Format("2006-01-02 15:04:05")),
+			TextTertiary.Render(" — "),
+			TextSecondary.Render(end.Format("2006-01-02 15:04:05")),
+			TextSecondary.Render(" ("+end.Sub(start).Round(time.Millisecond).String()+")"),
 		),
 	)
 }
@@ -160,7 +165,7 @@ func spanView(span db.GetSpansForTraceModel, selected bool, parentSpan *db.GetSp
 		NewStyle()
 
 	if selected {
-		style = style.Background(styling.ColorAccent)
+		style = style.Background(ColorAccent)
 	}
 
 	secondaryText := span.ServiceName + " • " + span.Duration.Round(time.Millisecond).String()
@@ -169,7 +174,7 @@ func spanView(span db.GetSpansForTraceModel, selected bool, parentSpan *db.GetSp
 		secondaryText += fmt.Sprintf(" (%.1f%%)", pctOfParentSpan)
 	}
 
-	return style.Render(span.Name) + " " + styling.TextTertiary.Render(secondaryText)
+	return style.Render(span.Name) + " " + TextTertiary.Render(secondaryText)
 }
 
 func treeView(tree traceNode, row, cursor *int, parentNode *db.GetSpansForTraceModel) string {
