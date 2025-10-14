@@ -52,7 +52,7 @@ func (m SpanWaterfallModel) View() string {
 		Width(m.width).
 		MarginTop(1)
 
-	minTime, maxTime, lines := WaterfallLinesForSpans(m.width, m.spans, func(span *db.GetSpansForTraceModel) string { return span.Name })
+	minTime, maxTime, lines := WaterfallLinesForSpans(m.width, m.spans, func(span *db.GetSpansForTraceModel) string { return span.Name }, -1)
 
 	numLines := len(lines)
 
@@ -73,7 +73,7 @@ func (m SpanWaterfallModel) View() string {
 	)
 }
 
-func WaterfallLinesForSpans(w int, spans []db.GetSpansForTraceModel, lineContent func(span *db.GetSpansForTraceModel) string) (time.Time, time.Time, []string) {
+func WaterfallLinesForSpans(w int, spans []db.GetSpansForTraceModel, lineContent func(span *db.GetSpansForTraceModel) string, cursor int) (time.Time, time.Time, []string) {
 	var minTime, maxTime time.Time
 
 	for i, span := range spans {
@@ -92,7 +92,7 @@ func WaterfallLinesForSpans(w int, spans []db.GetSpansForTraceModel, lineContent
 	}
 
 	lines := make([]string, 0, len(spans))
-	for _, span := range spans {
+	for i, span := range spans {
 		width := int(math.Round((float64(span.Duration.Nanoseconds()) / float64(maxTime.Sub(minTime).Nanoseconds())) * float64(w)))
 
 		// Sometimes really short spans would report as 0
@@ -108,12 +108,19 @@ func WaterfallLinesForSpans(w int, spans []db.GetSpansForTraceModel, lineContent
 			body = body[:width]
 		}
 
+		var color lipgloss.Color
+		if i == cursor {
+			color = ColorForeground
+		} else {
+			color = ColorAccent
+		}
+
 		lines = append(
 			lines,
 			lipgloss.NewStyle().
 				Width(width).
 				MarginLeft(marginLeft).
-				Background(ColorAccent).
+				Background(color).
 				Render(body),
 		)
 	}

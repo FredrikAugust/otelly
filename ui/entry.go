@@ -145,7 +145,7 @@ func (m Model) View() string {
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		lipgloss.NewStyle().Padding(0, 1).Width(m.width).Background(ColorAccent).Bold(true).Render("Otelly"),
+		lipgloss.NewStyle().AlignHorizontal(lipgloss.Center).Width(m.width).Background(ColorAccent).Bold(true).Render("Otelly"),
 		pageContent,
 	)
 }

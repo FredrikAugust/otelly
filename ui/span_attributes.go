@@ -10,6 +10,8 @@ import (
 
 type SpanAttributeModel struct {
 	attributes map[string]any
+
+	width int
 }
 
 func CreateSpanAttributeModel() SpanAttributeModel {
@@ -18,29 +20,29 @@ func CreateSpanAttributeModel() SpanAttributeModel {
 	}
 }
 
-func (s SpanAttributeModel) Init() tea.Cmd {
+func (m SpanAttributeModel) Init() tea.Cmd {
 	return nil
 }
 
-func (s SpanAttributeModel) Update(msg tea.Msg) (SpanAttributeModel, tea.Cmd) {
-	return s, nil
+func (m SpanAttributeModel) Update(msg tea.Msg) (SpanAttributeModel, tea.Cmd) {
+	return m, nil
 }
 
-func (s *SpanAttributeModel) SetAttributes(attributes map[string]any) {
-	s.attributes = attributes
+func (m *SpanAttributeModel) SetAttributes(attributes map[string]any) {
+	m.attributes = attributes
 }
 
-func (s SpanAttributeModel) View(w int) string {
+func (m SpanAttributeModel) View() string {
 	attributeStrs := make([]string, 0)
 
 	keys := make([]string, 0)
-	for k := range s.attributes {
+	for k := range m.attributes {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	for _, k := range keys {
-		v := s.attributes[k]
+		v := m.attributes[k]
 
 		// Only show strings
 		if reflect.TypeOf(v) != reflect.TypeFor[string]() {
@@ -59,7 +61,7 @@ func (s SpanAttributeModel) View(w int) string {
 	}
 
 	return lipgloss.NewStyle().
-		Width(w).
+		Width(m.width).
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Left,

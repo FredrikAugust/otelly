@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -15,8 +14,6 @@ import (
 
 type TracePageModel struct {
 	db *db.Database
-
-	spinner spinner.Model
 
 	spans []db.GetSpansForTraceModel
 
@@ -43,9 +40,8 @@ func (m TracePageModel) ShortHelp() []key.Binding {
 
 func CreateTracePageModel(db *db.Database) TracePageModel {
 	return TracePageModel{
-		db:      db,
-		spinner: spinner.New(spinner.WithSpinner(spinner.Points)),
-		cursor:  0,
+		db:     db,
+		cursor: 0,
 		keyMap: []key.Binding{
 			table.DefaultKeyMap().LineUp,
 			table.DefaultKeyMap().LineDown,
@@ -59,13 +55,15 @@ func CreateTracePageModel(db *db.Database) TracePageModel {
 }
 
 func (m TracePageModel) Init() tea.Cmd {
-	return m.spinner.Tick
+	return nil
 }
 
 func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.spanAttributeModel.width = m.width
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "ctrl+c", "q":
@@ -115,6 +113,7 @@ func (m TracePageModel) View() string {
 		container.GetWidth()-lipgloss.Width(hierarchicalView)-5,
 		m.spans,
 		func(span *db.GetSpansForTraceModel) string { return "" },
+		m.cursor,
 	)
 
 	return container.Render(
@@ -134,7 +133,7 @@ func (m TracePageModel) View() string {
 			"",
 			lipgloss.JoinHorizontal(0,
 				"resource", // TODO: create a component here
-				m.spanAttributeModel.View(m.width),
+				m.spanAttributeModel.View(),
 			),
 		),
 	)

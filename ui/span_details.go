@@ -55,6 +55,7 @@ func (m SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.waterfallModel.width = m.width - 4
 		m.resourceModel.width = m.width - 4
+		m.spanAttributeModel.width = m.width - 4
 	case MessageResetDetail:
 		m.span = nil
 		m.spanAttributeModel.attributes = nil
@@ -115,7 +116,7 @@ func (m SpanDetailsModel) View() string {
 			lipgloss.NewStyle().Bold(true).Render(m.span.Name),
 			m.waterfallModel.View(),
 			"",
-			m.spanAttributeModel.View(m.width-4),
+			m.spanAttributeModel.View(),
 			m.resourceModel.View(),
 		))
 }
