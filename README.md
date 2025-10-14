@@ -3,6 +3,15 @@
 [![CI](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml/badge.svg)](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml)
 
 A TUI for viewing and debugging with OTEL signals locally.
+Built with [bubbletea](https://github.com/charmbracelet/bubbletea),
+[lipgloss](https://github.com/charmbracelet/lipgloss),
+[Go OTEL SDK](https://opentelemetry.io/).
+
+A lot of inspiration has been taken from
+[otel-tui](https://github.com/ymtdzzz/otel-tui)
+by [@ymtdzzz](https://github.com/ymtdzzz). You should check
+out that project for a much more complete alternative to this. They've
+done an amazing job.
 
 ![a screenshot showing otelly in action](./assets/screenshot.png)
 
