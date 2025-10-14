@@ -35,11 +35,27 @@ state or use the application "clear state" feature (`ctrl+l` from table view).
 This will be changed before the first release so you can choose if you want
 persistence or not.
 
+### Contributions
+
+Contributions are very welcome:)
+
 ## Features
+
+![flamegraph](./assets/flamegraph.png)
+
+- See flamegraph of spans in a trace
+- See all incoming traces grouped by root spans on the overview page
 
 ### TODOs
 
-- [ ] after migrating to only returning new models, we need to re-work how we handle sizing
+- [x] after migrating to only returning new models, we need to re-work how we
+      handle sizing
+- [ ] move DB calls into `tea.Cmd` to not block
+- [ ] make graph realtime (difficulties encountered with clocks starting
+      alongside eachother)
+- [ ] add logs page
+- [ ] add logs for span/trace on trace page
+- [ ] use tape for better illustrations
 
 > [!NOTE]  
 > This projects is partially intended as a learning project, and as such use of

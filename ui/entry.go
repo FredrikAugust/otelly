@@ -46,15 +46,6 @@ const (
 	PageTrace
 )
 
-type windowSize struct {
-	height int
-	width  int
-}
-type Service struct {
-	Namespace string
-	Name      string
-}
-
 type Model struct {
 	currentPage int
 
@@ -64,24 +55,22 @@ type Model struct {
 	bus *bus.TransportBus
 	db  *db.Database
 
-	windowSize *windowSize
+	height int
+	width  int
 }
 
 func NewModel(bus *bus.TransportBus, db *db.Database) *Model {
 	return &Model{
-		currentPage: PageMain,
-		bus:         bus,
-		db:          db,
-		windowSize: &windowSize{
-			0, 0,
-		},
+		currentPage:    PageMain,
+		bus:            bus,
+		db:             db,
 		mainPageModel:  CreateMainPageModel(db),
 		tracePageModel: CreateTracePageModel(db),
 	}
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("new msg", "type", reflect.TypeOf(msg).Name())
+	slog.Debug("entrypoint update", "type", reflect.TypeOf(msg).Name())
 
 	var (
 		cmd  tea.Cmd
@@ -90,8 +79,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.windowSize.height = msg.Height
-		m.windowSize.width = msg.Width
+		m.height = msg.Height
+		m.width = msg.Width
+
+		m.mainPageModel.width = msg.Width
+		m.mainPageModel.height = msg.Height - 1
+
+		m.tracePageModel.width = msg.Width
+		m.tracePageModel.height = msg.Height - 1
 	case MessageGoToTrace:
 		m.currentPage = PageTrace
 		cmds = append(cmds, m.tracePageModel.Init())
@@ -119,15 +114,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) InsertResourceSpans(resourceSpans ptrace.ResourceSpans) tea.Cmd {
-	cmds := make([]tea.Cmd, 0)
-	var cmd tea.Cmd
+	return func() tea.Msg {
+		cmds := make([]tea.Cmd, 0)
+		var cmd tea.Cmd
 
-	m.db.InsertResourceSpans(resourceSpans)
+		m.db.InsertResourceSpans(resourceSpans)
 
-	m.mainPageModel, cmd = m.mainPageModel.Update(MessageUpdateRootSpanRows{})
-	cmds = append(cmds, cmd)
+		m.mainPageModel, cmd = m.mainPageModel.Update(MessageUpdateRootSpanRows{})
+		cmds = append(cmds, cmd)
 
-	return tea.Batch(cmds...)
+		return tea.Batch(cmds...)
+	}
 }
 
 func listenForNewSpans(spanChan chan ptrace.ResourceSpans) tea.Cmd {
@@ -137,26 +134,18 @@ func listenForNewSpans(spanChan chan ptrace.ResourceSpans) tea.Cmd {
 }
 
 func (m Model) View() string {
-	baseStyles := lipgloss.NewStyle().
-		Width(m.windowSize.width).
-		Height(m.windowSize.height)
+	pageContent := ""
 
-	return baseStyles.Render(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			lipgloss.NewStyle().Padding(0, 1).Width(baseStyles.GetWidth()).Background(ColorAccent).Bold(true).Render("Otelly"),
-			m.GetPageView(baseStyles.GetWidth(), baseStyles.GetHeight()-1),
-		),
-	)
-}
-
-func (m *Model) GetPageView(w, h int) string {
 	switch m.currentPage {
 	case PageMain:
-		return m.mainPageModel.View(w, h)
+		pageContent = m.mainPageModel.View()
 	case PageTrace:
-		return m.tracePageModel.View(w, h)
+		pageContent = m.tracePageModel.View()
 	}
 
-	return "unknown page"
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		lipgloss.NewStyle().Padding(0, 1).Width(m.width).Background(ColorAccent).Bold(true).Render("Otelly"),
+		pageContent,
+	)
 }

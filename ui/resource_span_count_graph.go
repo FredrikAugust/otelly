@@ -11,14 +11,16 @@ type ResourceSpanCountGraphModel struct {
 	chart       tslc.Model
 	aggregation []db.SpansPerMinuteForServiceModel
 	resourceID  string
-	width       int
 	db          *db.Database
+
+	width  int
+	height int
 }
 
 func CreateResourceSpanCountGraphModel(db *db.Database) ResourceSpanCountGraphModel {
 	return ResourceSpanCountGraphModel{
 		chart: tslc.New(
-			30, 10,
+			0, 10,
 			tslc.WithUpdateHandler(tslc.SecondUpdateHandler(60)),
 			tslc.WithXLabelFormatter(tslc.HourTimeLabelFormatter()),
 		),
@@ -34,6 +36,9 @@ func (m ResourceSpanCountGraphModel) Init() tea.Cmd {
 
 func (m ResourceSpanCountGraphModel) Update(msg tea.Msg) (ResourceSpanCountGraphModel, tea.Cmd) {
 	switch msg.(type) {
+	case tea.WindowSizeMsg:
+		m.chart.Resize(m.width, m.chart.Height())
+		m.chart.DrawBraille()
 	case MessageSetSelectedSpan:
 		m.updateGraph()
 	}
@@ -64,12 +69,4 @@ func (m *ResourceSpanCountGraphModel) updateGraph() {
 
 	m.chart.Resize(m.width, 10)
 	m.chart.DrawBraille()
-}
-
-func (m *ResourceSpanCountGraphModel) SetResourceID(resID string) {
-	m.resourceID = resID
-}
-
-func (m *ResourceSpanCountGraphModel) SetWidth(w int) {
-	m.width = w
 }

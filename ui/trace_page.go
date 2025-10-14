@@ -26,6 +26,9 @@ type TracePageModel struct {
 	cursor int
 
 	spanAttributeModel SpanAttributeModel
+
+	width  int
+	height int
 }
 
 // FullHelp implements help.KeyMap.
@@ -93,8 +96,8 @@ func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m TracePageModel) View(w, h int) string {
-	container := lipgloss.NewStyle().Width(w).Height(h)
+func (m TracePageModel) View() string {
+	container := lipgloss.NewStyle().Width(m.width).Height(m.height)
 
 	var rootSpan db.GetSpansForTraceModel
 	for _, span := range m.spans {
@@ -130,8 +133,8 @@ func (m TracePageModel) View(w, h int) string {
 			m.help.View(m),
 			"",
 			lipgloss.JoinHorizontal(0,
-				"resource",
-				m.spanAttributeModel.View(w),
+				"resource", // TODO: create a component here
+				m.spanAttributeModel.View(m.width),
 			),
 		),
 	)

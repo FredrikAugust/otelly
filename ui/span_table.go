@@ -64,9 +64,12 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	var cmd tea.Cmd
 
-	selection := s.SelectedSpanID()
+	selection := s.GetSelectedSpanID()
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		s.table.SetWidth(s.width)
+		s.table.SetHeight(s.height - 1) // subtract help height
 	case MessageUpdateRootSpanRows:
 		s.spans = s.db.GetRootSpans()
 		rows := make([]table.Row, 0)
@@ -84,7 +87,7 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 			s.table.SetRows(make([]table.Row, 0))
 			cmds = append(cmds, func() tea.Msg { return MessageResetDetail{} })
 		case "enter":
-			if s.SelectedSpanID() != "" {
+			if s.GetSelectedSpanID() != "" {
 				cmds = append(cmds, func() tea.Msg {
 					return MessageGoToTrace{
 						TraceID: s.spans[s.table.Cursor()].TraceID,
@@ -98,7 +101,7 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	if len(s.spans) > 0 {
-		newSelection := s.SelectedSpanID()
+		newSelection := s.GetSelectedSpanID()
 		if selection != newSelection {
 			cmds = append(cmds, setSelectedSpanCmd(newSelection))
 		}
@@ -128,19 +131,9 @@ func (s SpanTableModel) View() string {
 	)
 }
 
-func (s *SpanTableModel) SetHeight(h int) {
-	s.height = h
-	s.table.SetHeight(s.height - 1) // for Help
-}
-
-func (s *SpanTableModel) SetWidth(w int) {
-	s.width = w
-	s.table.SetWidth(s.width)
-}
-
-// SelectedSpanID returns the spanID if it exists,
+// GetSelectedSpanID returns the spanID if it exists,
 // and "" if not
-func (s SpanTableModel) SelectedSpanID() string {
+func (s SpanTableModel) GetSelectedSpanID() string {
 	selectedRow := s.table.SelectedRow()
 	if selectedRow == nil {
 		return ""

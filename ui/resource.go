@@ -34,8 +34,10 @@ func (m ResourceModel) Update(msg tea.Msg) (ResourceModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 
 	switch msg.(type) {
+	case tea.WindowSizeMsg:
+		m.resourceSpanCountGraphModel.width = m.width
 	case MessageSetSelectedSpan:
-		m.resourceSpanCountGraphModel.SetResourceID(m.resource.ID)
+		m.resourceSpanCountGraphModel.resourceID = m.resource.ID
 	}
 
 	m.resourceSpanCountGraphModel, cmd = m.resourceSpanCountGraphModel.Update(msg)
@@ -73,13 +75,4 @@ func (m ResourceModel) View() string {
 			),
 		),
 	)
-}
-
-func (m *ResourceModel) SetResource(res *db.Resource) {
-	m.resource = res
-}
-
-func (m *ResourceModel) SetWidth(w int) {
-	m.width = w
-	m.resourceSpanCountGraphModel.SetWidth(w)
 }
