@@ -15,6 +15,12 @@ done an amazing job.
 
 ![a screenshot showing otelly in action](./assets/screenshot.png)
 
+## Usage
+
+By running this project using `go run cmd/app/main.go` or `task run` a
+collector will start listening on `0.0.0.0:4317` for OTLP gRPC
+messages. I have not yet tested the HTTP ingestion endpoint.
+
 ## Development
 
 This project uses [Taskfile.dev](https://taskfile.dev) to simplify running commands.
