@@ -1,5 +1,4 @@
-// Package styling contains common helpers for typography in the UI
-// to avoid repetition
+// Package styling contains common helpers for ui styling
 package styling
 
 import "github.com/charmbracelet/lipgloss"
@@ -7,6 +6,7 @@ import "github.com/charmbracelet/lipgloss"
 var (
 	ColorSecondary = lipgloss.Color("#afafb2")
 	ColorTertiary  = lipgloss.Color("#6b6b6e")
+	ColorAccent    = lipgloss.Color("#2e6f40")
 )
 
 var (

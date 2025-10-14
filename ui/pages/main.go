@@ -31,10 +31,10 @@ func (m MainPageModel) View(w, h int) string {
 	mainPanelWidth := 76
 	sidePanelWidth := w - mainPanelWidth - 4
 
-	m.spanTable.SetHeight(h - 1)
+	m.spanTable.SetHeight(h)
 	m.spanTable.SetWidth(mainPanelWidth)
 
-	m.spanDetails.SetHeight(h - 1)
+	m.spanDetails.SetHeight(h)
 	m.spanDetails.SetWidth(sidePanelWidth)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,

@@ -225,23 +225,33 @@ func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteForServ
 }
 
 type GetSpansForTraceModel struct {
-	Name      string        `db:"name"`
-	StartTime time.Time     `db:"start_time"`
-	Duration  time.Duration `db:"duration_ns"`
+	TraceID      string         `db:"trace_id"`
+	ID           string         `db:"id"`
+	Name         string         `db:"name"`
+	StartTime    time.Time      `db:"start_time"`
+	Duration     time.Duration  `db:"duration_ns"`
+	ParentSpanID sql.NullString `db:"parent_span_id"`
+	ServiceName  string         `db:"service_name"`
 }
 
 func (d *Database) GetSpansForTrace(traceID string) ([]GetSpansForTraceModel, error) {
 	query := `
 	SELECT
-		start_time,
-		name,
-		duration_ns
+		s.id,
+		s.start_time,
+		s.trace_id,
+		s.name,
+		s.parent_span_id,
+		s.duration_ns,
+		r.service_name
 	FROM
-		span
+		span s
+	LEFT JOIN resource r ON
+		s.resource_id = r.id
 	WHERE
-		trace_id = $1
+		s.trace_id = $1
 	ORDER BY
-		start_time`
+		s.start_time`
 
 	res := make([]GetSpansForTraceModel, 0)
 

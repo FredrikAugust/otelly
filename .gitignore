@@ -11,3 +11,6 @@ local.db.wal
 
 # mac
 .DS_Store
+
+# claude code
+.claude

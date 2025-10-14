@@ -49,53 +49,11 @@ func (m SpanWaterfallModel) Init() tea.Cmd {
 }
 
 func (m SpanWaterfallModel) View() string {
-	var minTime, maxTime time.Time
-
-	for i, span := range m.spans {
-		if i == 0 {
-			minTime = span.StartTime
-			maxTime = span.StartTime.Add(span.Duration)
-			continue
-		}
-
-		if span.StartTime.Before(minTime) {
-			minTime = span.StartTime
-		}
-		if span.StartTime.Add(span.Duration).After(maxTime) {
-			maxTime = span.StartTime.Add(span.Duration)
-		}
-	}
-
 	baseStyle := lipgloss.NewStyle().
 		Width(m.width).
 		MarginTop(1)
 
-	lines := make([]string, 0, len(m.spans))
-	for _, span := range m.spans {
-		width := int(math.Floor((float64(span.Duration.Nanoseconds()) / float64(maxTime.Sub(minTime).Nanoseconds())) * float64(m.width)))
-
-		// Sometimes really short spans would report as 0
-		width = max(width, 1)
-
-		marginLeft := int(math.Floor(float64(span.StartTime.Sub(minTime).Nanoseconds()) / float64(maxTime.Sub(minTime).Nanoseconds()) * float64(m.width)))
-		if marginLeft == m.width {
-			marginLeft -= 1
-		}
-
-		name := span.Name
-		if len(name) > width {
-			name = name[:width]
-		}
-
-		lines = append(
-			lines,
-			lipgloss.NewStyle().
-				Width(width).
-				MarginLeft(marginLeft).
-				Background(lipgloss.Color("32")).
-				Render(name),
-		)
-	}
+	minTime, maxTime, lines := WaterfallLinesForSpans(m.width, m.spans, func(span *db.GetSpansForTraceModel) string { return span.Name })
 
 	numLines := len(lines)
 
@@ -114,4 +72,52 @@ func (m SpanWaterfallModel) View() string {
 			lipgloss.JoinVertical(lipgloss.Left, lines...),
 		),
 	)
+}
+
+func WaterfallLinesForSpans(w int, spans []db.GetSpansForTraceModel, lineContent func(span *db.GetSpansForTraceModel) string) (time.Time, time.Time, []string) {
+	var minTime, maxTime time.Time
+
+	for i, span := range spans {
+		if i == 0 {
+			minTime = span.StartTime
+			maxTime = span.StartTime.Add(span.Duration)
+			continue
+		}
+
+		if span.StartTime.Before(minTime) {
+			minTime = span.StartTime
+		}
+		if span.StartTime.Add(span.Duration).After(maxTime) {
+			maxTime = span.StartTime.Add(span.Duration)
+		}
+	}
+
+	lines := make([]string, 0, len(spans))
+	for _, span := range spans {
+		width := int(math.Round((float64(span.Duration.Nanoseconds()) / float64(maxTime.Sub(minTime).Nanoseconds())) * float64(w)))
+
+		// Sometimes really short spans would report as 0
+		width = max(width, 1)
+
+		marginLeft := int(math.Round(float64(span.StartTime.Sub(minTime).Nanoseconds()) / float64(maxTime.Sub(minTime).Nanoseconds()) * float64(w)))
+		if marginLeft == w {
+			marginLeft -= 1
+		}
+
+		body := lineContent(&span)
+		if len(body) > width {
+			body = body[:width]
+		}
+
+		lines = append(
+			lines,
+			lipgloss.NewStyle().
+				Width(width).
+				MarginLeft(marginLeft).
+				Background(styling.ColorAccent).
+				Render(body),
+		)
+	}
+
+	return minTime, maxTime, lines
 }

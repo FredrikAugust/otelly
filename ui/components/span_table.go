@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
+	"github.com/fredrikaugust/otelly/ui/styling"
 )
 
 type SpanTableModel struct {
@@ -29,7 +30,7 @@ func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 	cols := []table.Column{
 		{
 			Title: "Name",
-			Width: 32,
+			Width: 34,
 		},
 		{
 			Title: "Service",
@@ -37,7 +38,7 @@ func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 		},
 		{
 			Title: "Start time",
-			Width: 12,
+			Width: 14,
 		},
 		{
 			Title: "Duration",
@@ -48,7 +49,11 @@ func CreateSpanTableModel(db *db.Database) *SpanTableModel {
 	tableModel := table.New(
 		table.WithColumns(cols),
 		table.WithFocused(true),
-		table.WithStyles(table.DefaultStyles()),
+		table.WithStyles(table.Styles{
+			Selected: lipgloss.NewStyle().Bold(true).Background(styling.ColorAccent),
+			Header:   lipgloss.NewStyle().Bold(true),
+			Cell:     lipgloss.NewStyle(),
+		}),
 	)
 
 	return &SpanTableModel{
@@ -120,7 +125,7 @@ func (s SpanTableModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		lipgloss.NewStyle().Height(s.height-1).Render(s.table.View()),
-		lipgloss.NewStyle().PaddingLeft(1).Render(
+		lipgloss.NewStyle().Render(
 			s.table.Help.ShortHelpView(
 				append(
 					s.table.KeyMap.ShortHelp(),
