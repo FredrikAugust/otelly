@@ -66,12 +66,14 @@ Contributions are very welcome:)
 
 - [x] after migrating to only returning new models, we need to re-work how we
       handle sizing
-- [ ] move DB calls into `tea.Cmd` to not block
+- [x] move DB calls into `tea.Cmd` to not block
 - [ ] make graph realtime (difficulties encountered with clocks starting
       alongside eachother)
 - [ ] add logs page
 - [ ] add logs for span/trace on trace page
 - [ ] use tape for better illustrations
+- [ ] fix bug where the ordering of spans is not the same on main page and trace
+      view and sometimes the names of spans on trace page aren't showing
 
 > [!NOTE]  
 > This projects is partially intended as a learning project, and as such use of

@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
+	"go.uber.org/zap"
 )
 
 type TracePageModel struct {
@@ -82,19 +83,34 @@ func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 			m.cursor = len(m.spans) - 1
 		}
 	case MessageGoToTrace:
-		res, err := m.db.GetSpansForTrace(msg.TraceID)
-		if err == nil {
-			m.spans = res
-		}
+		cmds = append(cmds, m.getTrace(msg.TraceID))
+	case MessageReceivedTraceSpans:
+		m.spans = msg.Spans
+		selectedSpan := m.spans[m.cursor]
+		m.spanAttributeModel.SetAttributes(selectedSpan.Attributes)
 	}
-
-	selectedSpan := m.spans[m.cursor]
-	m.spanAttributeModel.SetAttributes(selectedSpan.Attributes)
 
 	return m, tea.Batch(cmds...)
 }
 
+func (m TracePageModel) getTrace(traceID string) tea.Cmd {
+	return func() tea.Msg {
+		res, err := m.db.GetSpansForTrace(traceID)
+		if err != nil {
+			zap.L().Warn("failed to get trace", zap.Error(err), zap.String("traceID", traceID))
+			return nil
+		}
+
+		return MessageReceivedTraceSpans{Spans: res}
+	}
+}
+
 func (m TracePageModel) View() string {
+	if len(m.spans) == 0 {
+		// TODO: replace with spinner
+		return "No spans loaded for trace"
+	}
+
 	container := lipgloss.NewStyle().Width(m.width).Height(m.height)
 
 	var rootSpan db.SpanWithResource
