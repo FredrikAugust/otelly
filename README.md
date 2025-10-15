@@ -19,7 +19,8 @@ done an amazing job.
 
 By running this project using `go run cmd/app/main.go` or `task run` a
 collector will start listening on `0.0.0.0:4317` for OTLP gRPC
-messages. I have not yet tested the HTTP ingestion endpoint.
+messages. It's also listening on HTTP on port 4318 with CORS
+configured to allow all domains and all headers.
 
 ## Development
 
