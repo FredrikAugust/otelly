@@ -70,8 +70,8 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		s.table.SetWidth(s.width)
 		s.table.SetHeight(s.height - 1) // subtract help height
-	case MessageUpdateRootSpanRows:
-		s.spans = s.db.GetRootSpans()
+	case MessageUpdateRootSpans:
+		s.spans = msg.NewRootSpans
 		rows := make([]table.Row, 0)
 		for _, span := range s.spans {
 			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.Round(time.Millisecond).String()})

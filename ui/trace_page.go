@@ -129,6 +129,7 @@ func (m TracePageModel) View() string {
 				lipgloss.NewStyle().Width(5).Render(""),
 				lipgloss.JoinVertical(0.0, waterfallView...),
 			),
+			"",
 			m.help.View(m),
 			"",
 			lipgloss.JoinHorizontal(0,

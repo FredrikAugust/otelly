@@ -46,6 +46,8 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 				attrs = []byte("{}")
 			}
 
+			zap.L().Debug("inserting new span", zap.Bool("root", span.ParentSpanID().IsEmpty()), zap.String("name", span.Name()))
+
 			_, err = d.sqlDB.Exec(
 				`INSERT INTO span VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 				span.SpanID().String(),

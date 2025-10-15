@@ -11,6 +11,7 @@ import (
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/db"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.uber.org/zap"
 )
 
 func Start(ctx context.Context, bus *bus.TransportBus, db *db.Database) error {
@@ -36,7 +37,7 @@ func (m Model) Init() tea.Cmd {
 		func() tea.Msg {
 			// In case we're runnign DB with file we can keep the seed around, and
 			// this will make it load into the UI immediately.
-			return MessageUpdateRootSpanRows{}
+			return MessageUpdateRootSpans{}
 		},
 	)
 }
@@ -97,7 +98,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(
 			cmds,
 			listenForNewSpans(m.bus.TraceBus),
-			m.InsertResourceSpans(msg.resourceSpans),
+			m.InsertResourceSpans(msg.ResourceSpans),
 		)
 	}
 
@@ -113,23 +114,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) InsertResourceSpans(resourceSpans ptrace.ResourceSpans) tea.Cmd {
+func (m Model) InsertResourceSpans(resourceSpans ptrace.ResourceSpans) tea.Cmd {
 	return func() tea.Msg {
-		cmds := make([]tea.Cmd, 0)
-		var cmd tea.Cmd
+		err := m.db.InsertResourceSpans(resourceSpans)
+		if err != nil {
+			zap.L().Warn("could not insert resource spans", zap.Error(err))
+			return nil
+		}
 
-		m.db.InsertResourceSpans(resourceSpans)
+		newRootSpans := m.db.GetRootSpans()
 
-		m.mainPageModel, cmd = m.mainPageModel.Update(MessageUpdateRootSpanRows{})
-		cmds = append(cmds, cmd)
-
-		return tea.Batch(cmds...)
+		return MessageUpdateRootSpans{
+			NewRootSpans: newRootSpans,
+		}
 	}
 }
 
 func listenForNewSpans(spanChan chan ptrace.ResourceSpans) tea.Cmd {
 	return func() tea.Msg {
-		return MessageResourceSpansArrived{resourceSpans: <-spanChan}
+		return MessageResourceSpansArrived{ResourceSpans: <-spanChan}
 	}
 }
 
