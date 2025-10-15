@@ -11,7 +11,7 @@ import (
 )
 
 type SpanTableModel struct {
-	spans []db.Span
+	spans []db.SpanWithResource
 	table table.Model
 
 	width  int
@@ -70,22 +70,14 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		s.table.SetWidth(s.width)
 		s.table.SetHeight(s.height - 1) // subtract help height
-	case MessageUpdateRootSpans:
-		s.spans = msg.NewRootSpans
-		rows := make([]table.Row, 0)
-		for _, span := range s.spans {
-			rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.Round(time.Millisecond).String()})
-		}
-		s.table.SetRows(rows)
-		// TODO: restore Cursor to selection
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+l":
 			s.db.Clear()
 			s.table.SetCursor(0)
-			s.spans = make([]db.Span, 0)
+			s.spans = make([]db.SpanWithResource, 0)
 			s.table.SetRows(make([]table.Row, 0))
-			cmds = append(cmds, func() tea.Msg { return MessageResetDetail{} })
+			cmds = append(cmds, func() tea.Msg { return MessageSetSelectedSpan{} })
 		case "enter":
 			if s.GetSelectedSpanID() != "" {
 				cmds = append(cmds, func() tea.Msg {
@@ -103,16 +95,16 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	if len(s.spans) > 0 {
 		newSelection := s.GetSelectedSpanID()
 		if selection != newSelection {
-			cmds = append(cmds, setSelectedSpanCmd(newSelection))
+			cmds = append(cmds, setSelectedSpanCmd(s.spans[s.table.Cursor()]))
 		}
 	}
 
 	return s, tea.Batch(cmds...)
 }
 
-func setSelectedSpanCmd(spanID string) tea.Cmd {
+func setSelectedSpanCmd(span db.SpanWithResource) tea.Cmd {
 	return func() tea.Msg {
-		return MessageSetSelectedSpan{SpanID: spanID}
+		return MessageSetSelectedSpan{Span: span}
 	}
 }
 
@@ -140,4 +132,15 @@ func (s SpanTableModel) GetSelectedSpanID() string {
 	}
 
 	return s.spans[s.table.Cursor()].ID
+}
+
+// SetRootSpans updates and redraws table.
+// TODO: Does not restore cursor to selected span.
+func (s *SpanTableModel) SetRootSpans(spans []db.SpanWithResource) {
+	s.spans = spans
+	rows := make([]table.Row, 0)
+	for _, span := range s.spans {
+		rows = append(rows, table.Row{span.Name, span.ServiceName, span.StartTime.Format("15:04:05.000"), span.Duration.Round(time.Millisecond).String()})
+	}
+	s.table.SetRows(rows)
 }

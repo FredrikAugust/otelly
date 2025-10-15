@@ -84,44 +84,17 @@ func (d *Database) Clear() error {
 	return nil
 }
 
-func (d *Database) GetSpan(id string) (*Span, error) {
-	var span Span
-
-	err := d.sqlDB.Get(
-		&span,
-		`SELECT
-			trace_id,
-			id,
-			name,
-			start_time,
-			attributes,
-			duration_ns,
-			resource_id,
-		FROM
-			span
-		WHERE id = $1`,
-		id,
-	)
-	if err != nil {
-		slog.Warn("failed to get span", "spanID", id)
-		return nil, err
-	}
-
-	slog.Debug("got span", "id", id)
-
-	return &span, nil
-}
-
 func (d *Database) GetResource(id string) (*Resource, error) {
 	var res Resource
 
 	err := d.sqlDB.Get(
 		&res,
-		`SELECT
-							*
-						FROM
-							resource
-						WHERE id = $1`,
+		`
+		SELECT
+			*
+		FROM
+			resource
+		WHERE id = $1`,
 		id,
 	)
 	if err != nil {
@@ -134,60 +107,35 @@ func (d *Database) GetResource(id string) (*Resource, error) {
 	return &res, nil
 }
 
-func (d *Database) GetSpans() []Span {
-	spans := make([]Span, 0)
+func (d *Database) GetRootSpans() []SpanWithResource {
+	spans := make([]SpanWithResource, 0)
 	err := d.sqlDB.Select(
 		&spans,
-		`SELECT
-							s.trace_id,
-							s.id,
-							s.name,
-							s.start_time,
-							s.duration_ns,
-							s.status_code,
-							s.attributes,
-							r.service_name
-						FROM
-							span s
-						LEFT JOIN resource r ON s.resource_id = r.id`,
+		`
+		SELECT
+			s.trace_id,
+			s.id,
+			s.name,
+			s.start_time,
+			s.duration_ns,
+			s.status_code,
+			s.attributes,
+			s.resource_id,
+			r.service_name
+		FROM
+			span s
+		LEFT JOIN resource r ON s.resource_id = r.id
+		WHERE
+			s.parent_span_id IS NULL
+		ORDER BY
+			s.start_time DESC`,
 	)
 	if err != nil {
-		slog.Warn("could not get spans", "error", err)
+		slog.Warn("could not get root spans", "error", err)
 		return spans
 	}
 
-	slog.Debug("got spans", "len", len(spans))
-
-	return spans
-}
-
-func (d *Database) GetRootSpans() []Span {
-	spans := make([]Span, 0)
-	err := d.sqlDB.Select(
-		&spans,
-		`SELECT
-							s.trace_id,
-							s.id,
-							s.name,
-							s.start_time,
-							s.duration_ns,
-							s.status_code,
-							s.attributes,
-							r.service_name
-						FROM
-							span s
-						LEFT JOIN resource r ON s.resource_id = r.id
-						WHERE
-							s.parent_span_id IS NULL
-						ORDER BY
-							s.start_time DESC`,
-	)
-	if err != nil {
-		slog.Warn("could not get spans", "error", err)
-		return spans
-	}
-
-	slog.Debug("got spans", "len", len(spans))
+	slog.Debug("got root spans", "len", len(spans))
 
 	return spans
 }
@@ -197,7 +145,7 @@ type SpansPerMinuteForServiceModel struct {
 	SpanCount int       `db:"span_count"`
 }
 
-func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteForServiceModel, error) {
+func (d *Database) SpansPerMinuteForService(resourceID string) ([]SpansPerMinuteForServiceModel, error) {
 	query := `
 	SELECT
 		date_trunc('minute', start_time) as bucket_start,
@@ -216,7 +164,7 @@ func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteForServ
 
 	res := make([]SpansPerMinuteForServiceModel, 0)
 
-	err := d.sqlDB.Select(&res, query, svc)
+	err := d.sqlDB.Select(&res, query, resourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -226,18 +174,7 @@ func (d *Database) SpansPerMinuteForService(svc string) ([]SpansPerMinuteForServ
 	return res, nil
 }
 
-type GetSpansForTraceModel struct {
-	TraceID      string         `db:"trace_id"`
-	ID           string         `db:"id"`
-	Name         string         `db:"name"`
-	StartTime    time.Time      `db:"start_time"`
-	Duration     time.Duration  `db:"duration_ns"`
-	ParentSpanID sql.NullString `db:"parent_span_id"`
-	Attributes   map[string]any `db:"attributes"`
-	ServiceName  string         `db:"service_name"`
-}
-
-func (d *Database) GetSpansForTrace(traceID string) ([]GetSpansForTraceModel, error) {
+func (d *Database) GetSpansForTrace(traceID string) ([]SpanWithResource, error) {
 	query := `
 	SELECT
 		s.id,
@@ -257,7 +194,7 @@ func (d *Database) GetSpansForTrace(traceID string) ([]GetSpansForTraceModel, er
 	ORDER BY
 		s.start_time`
 
-	res := make([]GetSpansForTraceModel, 0)
+	res := make([]SpanWithResource, 0)
 
 	err := d.sqlDB.Select(&res, query, traceID)
 	if err != nil {

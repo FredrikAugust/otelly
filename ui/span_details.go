@@ -1,15 +1,14 @@
 package ui
 
 import (
-	"log/slog"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
+	"go.uber.org/zap"
 )
 
 type SpanDetailsModel struct {
-	span *db.Span
+	span db.SpanWithResource
 
 	resourceSpanHistory []db.SpansPerMinuteForServiceModel
 
@@ -34,14 +33,12 @@ func (m SpanDetailsModel) Init() tea.Cmd {
 
 func CreateSpanDetailsModel(db *db.Database) SpanDetailsModel {
 	return SpanDetailsModel{
-		span: nil,
-
 		db: db,
 
 		width:  0,
 		height: 0,
 
-		waterfallModel:     CreateSpanWaterfallModel(db),
+		waterfallModel:     CreateSpanWaterfallModel(),
 		spanAttributeModel: CreateSpanAttributeModel(),
 		resourceModel:      CreateResourceModel(db),
 	}
@@ -56,29 +53,14 @@ func (m SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 		m.waterfallModel.width = m.width - 4
 		m.resourceModel.width = m.width - 4
 		m.spanAttributeModel.width = m.width - 4
-	case MessageResetDetail:
-		m.span = nil
-		m.spanAttributeModel.attributes = nil
-		m.resourceModel.resource = nil
 	case MessageSetSelectedSpan:
-		if m.span != nil && msg.SpanID == m.span.ID {
-			// Don't query the span again when we already have it
-			break
-		}
-
-		span, err := m.db.GetSpan(msg.SpanID)
-		if err != nil {
-			slog.Warn("could not get span with resource in span details", "spanID", msg.SpanID, "error", err)
-		}
-
-		m.span = span
-		res, err := m.db.GetResource(span.ResourceID)
-		if err != nil {
-			slog.Warn("could not get resource", "error", err)
-		}
-
-		m.spanAttributeModel.attributes = m.span.Attributes
-		m.resourceModel.resource = res
+		m.span = msg.Span
+		cmds = append(cmds, m.getTrace(msg.Span.TraceID))
+		m.spanAttributeModel.attributes = msg.Span.Attributes
+		m.resourceModel, cmd = m.resourceModel.getResourceAndResourceAggregation(msg.Span.ResourceID)
+		cmds = append(cmds, cmd)
+	case MessageReceivedTraceSpans:
+		m.waterfallModel.spans = msg.Spans
 	}
 
 	m.waterfallModel, cmd = m.waterfallModel.Update(msg)
@@ -93,6 +75,18 @@ func (m SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m SpanDetailsModel) getTrace(traceID string) tea.Cmd {
+	return func() tea.Msg {
+		spans, err := m.db.GetSpansForTrace(traceID)
+		if err != nil {
+			zap.L().Warn("could not get trace", zap.String("traceID", traceID))
+		}
+		return MessageReceivedTraceSpans{
+			Spans: spans,
+		}
+	}
+}
+
 func (m SpanDetailsModel) View() string {
 	box := lipgloss.NewStyle().
 		Width(m.width-2).
@@ -101,7 +95,7 @@ func (m SpanDetailsModel) View() string {
 		BorderForeground(lipgloss.Color("240")).
 		Padding(0, 1)
 
-	if m.span == nil {
+	if m.span.ID == "" {
 		return box.Foreground(ColorSecondary).Align(lipgloss.Center, lipgloss.Center).Render("No span selected")
 	}
 

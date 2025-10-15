@@ -19,8 +19,13 @@ type Span struct {
 	Attributes map[string]any `db:"attributes"`
 
 	ResourceID string `db:"resource_id"`
+}
 
-	ServiceName string `db:"service_name"`
+type SpanWithResource struct {
+	Span
+
+	ServiceName      string `db:"service_name"`
+	ServiceNamespace string `db:"service_namespace"`
 }
 
 type Resource struct {

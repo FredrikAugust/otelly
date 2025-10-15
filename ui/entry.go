@@ -34,11 +34,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.mainPageModel.Init(),
 		listenForNewSpans(m.bus.TraceBus),
-		func() tea.Msg {
-			// In case we're runnign DB with file we can keep the seed around, and
-			// this will make it load into the UI immediately.
-			return MessageUpdateRootSpans{}
-		},
+		m.fetchRootSpans(),
 	)
 }
 
@@ -90,6 +86,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tracePageModel.height = msg.Height - 1
 	case MessageGoToTrace:
 		m.currentPage = PageTrace
+		m.tracePageModel.cursor = 0
 		cmds = append(cmds, m.tracePageModel.Init())
 	case MessageReturnToMainPage:
 		m.currentPage = PageMain
@@ -100,6 +97,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			listenForNewSpans(m.bus.TraceBus),
 			m.InsertResourceSpans(msg.ResourceSpans),
 		)
+	case MessageResourceSpansInserted:
+		cmds = append(cmds, m.fetchRootSpans())
+	case MessageUpdateRootSpans:
+		if len(msg.NewRootSpans) > 0 && len(m.mainPageModel.spanTable.spans) == 0 {
+			cmds = append(cmds, func() tea.Msg { return MessageSetSelectedSpan{Span: msg.NewRootSpans[0]} })
+		}
+		m.mainPageModel.SetSpans(msg.NewRootSpans)
 	}
 
 	switch m.currentPage {
@@ -114,6 +118,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m Model) fetchRootSpans() tea.Cmd {
+	return func() tea.Msg {
+		newRootSpans := m.db.GetRootSpans()
+
+		return MessageUpdateRootSpans{
+			NewRootSpans: newRootSpans,
+		}
+	}
+}
+
 func (m Model) InsertResourceSpans(resourceSpans ptrace.ResourceSpans) tea.Cmd {
 	return func() tea.Msg {
 		err := m.db.InsertResourceSpans(resourceSpans)
@@ -121,12 +135,7 @@ func (m Model) InsertResourceSpans(resourceSpans ptrace.ResourceSpans) tea.Cmd {
 			zap.L().Warn("could not insert resource spans", zap.Error(err))
 			return nil
 		}
-
-		newRootSpans := m.db.GetRootSpans()
-
-		return MessageUpdateRootSpans{
-			NewRootSpans: newRootSpans,
-		}
+		return MessageResourceSpansInserted{}
 	}
 }
 

@@ -8,38 +8,21 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
-	"go.uber.org/zap"
 )
 
 type SpanWaterfallModel struct {
 	traceID string
 
-	spans []db.GetSpansForTraceModel
+	spans []db.SpanWithResource
 
 	width int
-
-	db *db.Database
 }
 
-func CreateSpanWaterfallModel(db *db.Database) SpanWaterfallModel {
-	return SpanWaterfallModel{db: db}
+func CreateSpanWaterfallModel() SpanWaterfallModel {
+	return SpanWaterfallModel{}
 }
 
 func (m SpanWaterfallModel) Update(msg tea.Msg) (SpanWaterfallModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case MessageSetSelectedSpan:
-		// Load the trace for this span
-		span, _ := m.db.GetSpan(msg.SpanID)
-		if span != nil {
-			m.traceID = span.TraceID
-			spans, err := m.db.GetSpansForTrace(span.TraceID)
-			if err != nil {
-				zap.L().Warn("could not get trace", zap.Error(err))
-			}
-			m.spans = spans
-		}
-	}
-
 	return m, nil
 }
 
@@ -52,7 +35,7 @@ func (m SpanWaterfallModel) View() string {
 		Width(m.width).
 		MarginTop(1)
 
-	minTime, maxTime, lines := WaterfallLinesForSpans(m.width, m.spans, func(span *db.GetSpansForTraceModel) string { return span.Name }, -1)
+	minTime, maxTime, lines := WaterfallLinesForSpans(m.width, m.spans, func(span *db.SpanWithResource) string { return span.Name }, -1)
 
 	numLines := len(lines)
 
@@ -73,7 +56,7 @@ func (m SpanWaterfallModel) View() string {
 	)
 }
 
-func WaterfallLinesForSpans(w int, spans []db.GetSpansForTraceModel, lineContent func(span *db.GetSpansForTraceModel) string, cursor int) (time.Time, time.Time, []string) {
+func WaterfallLinesForSpans(w int, spans []db.SpanWithResource, lineContent func(span *db.SpanWithResource) string, cursor int) (time.Time, time.Time, []string) {
 	var minTime, maxTime time.Time
 
 	for i, span := range spans {

@@ -15,7 +15,7 @@ import (
 type TracePageModel struct {
 	db *db.Database
 
-	spans []db.GetSpansForTraceModel
+	spans []db.SpanWithResource
 
 	keyMap []key.Binding
 	help   help.Model
@@ -97,7 +97,7 @@ func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 func (m TracePageModel) View() string {
 	container := lipgloss.NewStyle().Width(m.width).Height(m.height)
 
-	var rootSpan db.GetSpansForTraceModel
+	var rootSpan db.SpanWithResource
 	for _, span := range m.spans {
 		if !span.ParentSpanID.Valid {
 			rootSpan = span
@@ -112,7 +112,7 @@ func (m TracePageModel) View() string {
 	startTime, endTime, waterfallView := WaterfallLinesForSpans(
 		container.GetWidth()-lipgloss.Width(hierarchicalView)-5,
 		m.spans,
-		func(span *db.GetSpansForTraceModel) string { return "" },
+		func(span *db.SpanWithResource) string { return "" },
 		m.cursor,
 	)
 
@@ -122,9 +122,7 @@ func (m TracePageModel) View() string {
 			"",
 			lipgloss.JoinHorizontal(0,
 				lipgloss.JoinVertical(0,
-					lipgloss.JoinVertical(0,
-						hierarchicalView,
-					),
+					hierarchicalView,
 				),
 				lipgloss.NewStyle().Width(5).Render(""),
 				lipgloss.JoinVertical(0.0, waterfallView...),
@@ -159,11 +157,11 @@ func header(traceID, name string, start, end time.Time) string {
 }
 
 type traceNode struct {
-	span     db.GetSpansForTraceModel
+	span     db.SpanWithResource
 	children []traceNode
 }
 
-func spanView(span db.GetSpansForTraceModel, selected bool, parentSpan *db.GetSpansForTraceModel) string {
+func spanView(span db.SpanWithResource, selected bool, parentSpan *db.SpanWithResource) string {
 	style := lipgloss.
 		NewStyle()
 
@@ -180,7 +178,7 @@ func spanView(span db.GetSpansForTraceModel, selected bool, parentSpan *db.GetSp
 	return style.Render(span.Name) + " " + TextTertiary.Render(secondaryText)
 }
 
-func treeView(tree traceNode, row, cursor *int, parentNode *db.GetSpansForTraceModel) string {
+func treeView(tree traceNode, row, cursor *int, parentNode *db.SpanWithResource) string {
 	currentRow := *row
 	*row += 1
 
@@ -197,7 +195,7 @@ func treeView(tree traceNode, row, cursor *int, parentNode *db.GetSpansForTraceM
 	)
 }
 
-func buildTree(rootSpan db.GetSpansForTraceModel, spans []db.GetSpansForTraceModel) traceNode {
+func buildTree(rootSpan db.SpanWithResource, spans []db.SpanWithResource) traceNode {
 	node := traceNode{}
 
 	children := make([]traceNode, 0)

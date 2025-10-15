@@ -10,9 +10,16 @@ type (
 	MessageReturnToMainPage struct{}
 
 	// MessageResourceSpansArrived signifies that the collector has received new spans
-	MessageResourceSpansArrived struct{ ResourceSpans ptrace.ResourceSpans }
+	MessageResourceSpansArrived  struct{ ResourceSpans ptrace.ResourceSpans }
+	MessageResourceSpansInserted struct{}
 
-	MessageSetSelectedSpan struct{ SpanID string }
-	MessageResetDetail     struct{}
-	MessageUpdateRootSpans struct{ NewRootSpans []db.Span }
+	MessageSetSelectedSpan struct{ Span db.SpanWithResource }
+	MessageUpdateRootSpans struct{ NewRootSpans []db.SpanWithResource }
+
+	MessageResourceReceived            struct{ Resource db.Resource }
+	MessageResourceAggregationReceived struct {
+		Aggregation []db.SpansPerMinuteForServiceModel
+	}
+
+	MessageReceivedTraceSpans struct{ Spans []db.SpanWithResource }
 )

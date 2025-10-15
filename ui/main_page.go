@@ -64,3 +64,7 @@ func (m MainPageModel) Update(msg tea.Msg) (MainPageModel, tea.Cmd) {
 
 	return m, tea.Batch(cmds...)
 }
+
+func (m *MainPageModel) SetSpans(spans []db.SpanWithResource) {
+	m.spanTable.SetRootSpans(spans)
+}

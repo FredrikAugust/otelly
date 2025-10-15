@@ -3,6 +3,7 @@ package ui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"go.uber.org/zap"
 
 	"github.com/fredrikaugust/otelly/db"
 )
@@ -12,7 +13,7 @@ type ResourceModel struct {
 
 	db *db.Database
 
-	resource *db.Resource
+	resource db.Resource
 
 	resourceSpanCountGraphModel ResourceSpanCountGraphModel
 }
@@ -33,11 +34,13 @@ func (m ResourceModel) Update(msg tea.Msg) (ResourceModel, tea.Cmd) {
 	var cmd tea.Cmd
 	cmds := make([]tea.Cmd, 0)
 
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.resourceSpanCountGraphModel.width = m.width
-	case MessageSetSelectedSpan:
-		m.resourceSpanCountGraphModel.resourceID = m.resource.ID
+	case MessageResourceReceived:
+		m.resource = msg.Resource
+	case MessageResourceAggregationReceived:
+		m.resourceSpanCountGraphModel.updateGraph(msg.Aggregation)
 	}
 
 	m.resourceSpanCountGraphModel, cmd = m.resourceSpanCountGraphModel.Update(msg)
@@ -46,14 +49,34 @@ func (m ResourceModel) Update(msg tea.Msg) (ResourceModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m ResourceModel) getResourceAndResourceAggregation(resourceID string) (ResourceModel, tea.Cmd) {
+	getResourceCmd := func() tea.Msg {
+		res, err := m.db.GetResource(resourceID)
+		if err != nil {
+			zap.L().Warn("could not get resource", zap.String("resourceID", resourceID))
+			return nil
+		}
+
+		return MessageResourceReceived{Resource: *res}
+	}
+
+	getAggregationCmd := func() tea.Msg {
+		res, err := m.db.SpansPerMinuteForService(resourceID)
+		if err != nil {
+			zap.L().Warn("could not get resource aggregation", zap.String("resourceID", resourceID))
+			return nil
+		}
+
+		return MessageResourceAggregationReceived{Aggregation: res}
+	}
+
+	return m, tea.Batch(getResourceCmd, getAggregationCmd)
+}
+
 func (m ResourceModel) View() string {
 	baseStyle := lipgloss.NewStyle().
 		Width(m.width).
 		MarginTop(1)
-
-	if m.resource == nil {
-		return baseStyle.Render("No resource found")
-	}
 
 	return baseStyle.Render(
 		lipgloss.JoinVertical(
