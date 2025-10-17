@@ -1,25 +1,37 @@
 package ui
 
 import (
-	"fmt"
 	"math"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
+	"github.com/fredrikaugust/otelly/ui/helpers"
 )
 
 type SpanWaterfallModel struct {
-	traceID string
+	tree helpers.TraceTreeNode
 
-	spans []db.SpanWithResource
+	width  int
+	height int
 
-	width int
+	renderLine func(span *db.SpanWithResource, width int) string
+
+	cursor int
 }
 
 func CreateSpanWaterfallModel() SpanWaterfallModel {
-	return SpanWaterfallModel{}
+	return SpanWaterfallModel{
+		cursor: -1,
+		height: 10,
+		renderLine: func(span *db.SpanWithResource, width int) string {
+			if len(span.Name) > width {
+				return span.Name[:width]
+			}
+			return span.Name
+		},
+	}
 }
 
 func (m SpanWaterfallModel) Update(msg tea.Msg) (SpanWaterfallModel, tea.Cmd) {
@@ -32,81 +44,62 @@ func (m SpanWaterfallModel) Init() tea.Cmd {
 
 func (m SpanWaterfallModel) View() string {
 	baseStyle := lipgloss.NewStyle().
-		Width(m.width).
-		MarginTop(1)
+		Width(m.width)
 
-	minTime, maxTime, lines := WaterfallLinesForSpans(m.width, m.spans, func(span *db.SpanWithResource) string { return span.Name }, -1)
-
-	numLines := len(lines)
-
-	// Genius trick to avoid having to deal with singular/plural span(s) string
-	if numLines > 7 {
-		lines = lines[:5]
-		lines = append(lines, TextSecondary.Render(fmt.Sprintf("+ %v more spans", numLines-5)))
-	}
-
-	return baseStyle.Render(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			lipgloss.JoinHorizontal(
-				lipgloss.Top, TextHeading.MarginBottom(1).Render("Trace"), " ", TextSecondary.Render(fmt.Sprintf("(%v)", maxTime.Sub(minTime))),
-			),
-			lipgloss.JoinVertical(lipgloss.Left, lines...),
-		),
+	var (
+		lineIdx          int
+		minTime, maxTime = m.tree.GetTimeRange()
 	)
-}
 
-func WaterfallLinesForSpans(w int, spans []db.SpanWithResource, lineContent func(span *db.SpanWithResource) string, cursor int) (time.Time, time.Time, []string) {
-	var minTime, maxTime time.Time
-
-	for i, span := range spans {
-		if i == 0 {
-			minTime = span.StartTime
-			maxTime = span.StartTime.Add(span.Duration)
-			continue
-		}
-
-		if span.StartTime.Before(minTime) {
-			minTime = span.StartTime
-		}
-		if span.StartTime.Add(span.Duration).After(maxTime) {
-			maxTime = span.StartTime.Add(span.Duration)
-		}
-	}
-
-	lines := make([]string, 0, len(spans))
-	for i, span := range spans {
-		width := int(math.Round((float64(span.Duration.Nanoseconds()) / float64(maxTime.Sub(minTime).Nanoseconds())) * float64(w)))
+	lines := make([]string, 0)
+	for _, item := range m.tree.All() {
+		width := int(math.Round((float64(item.Span.Duration) / float64(maxTime.Sub(minTime))) * float64(m.width)))
 
 		// Sometimes really short spans would report as 0
 		width = max(width, 1)
 
-		marginLeft := int(math.Round(float64(span.StartTime.Sub(minTime).Nanoseconds()) / float64(maxTime.Sub(minTime).Nanoseconds()) * float64(w)))
-		if marginLeft == w {
+		// The duration from the last startTime (parent) to this one. Duration between starts.
+		delayStr := TextSecondary.Render("↪" + item.Span.StartTime.Sub(item.ParentStartTime).Round(time.Millisecond).String())
+		marginLeft := int(math.Round(float64(item.Span.StartTime.Sub(minTime)) / float64(maxTime.Sub(minTime)) * float64(m.width)))
+
+		var backgroundColor, foregroundColor lipgloss.Color
+		if lineIdx == m.cursor {
+			backgroundColor = ColorForeground
+			foregroundColor = ColorAccent
+		} else {
+			backgroundColor = ColorAccent
+			foregroundColor = ColorForeground
+		}
+
+		// Compensate for the max(width, 1) which is for very short spans
+		if marginLeft == m.width {
 			marginLeft -= 1
 		}
 
-		body := lineContent(&span)
-		if len(body) > width {
-			body = body[:width]
-		}
+		// The textual content
+		body := m.renderLine(&item.Span, width)
 
-		var color lipgloss.Color
-		if i == cursor {
-			color = ColorForeground
+		// If we have room to add the delayStr before the span "block", we add it
+		if lipgloss.Width(delayStr) <= marginLeft {
+			marginLeft -= lipgloss.Width(delayStr)
+			body = lipgloss.NewStyle().MarginLeft(marginLeft).Render(
+				lipgloss.JoinHorizontal(0, delayStr, lipgloss.NewStyle().Foreground(foregroundColor).Background(backgroundColor).Width(width).Render(body)),
+			)
 		} else {
-			color = ColorAccent
+			body = lipgloss.NewStyle().MarginLeft(marginLeft).Render(
+				lipgloss.NewStyle().Foreground(foregroundColor).Background(backgroundColor).Width(width).Render(body),
+			)
 		}
 
 		lines = append(
 			lines,
-			lipgloss.NewStyle().
-				Width(width).
-				MarginLeft(marginLeft).
-				Background(color).
-				Render(body),
+			body,
 		)
+
+		lineIdx++
 	}
 
-	return minTime, maxTime, lines
+	return baseStyle.Render(
+		lipgloss.JoinVertical(lipgloss.Left, lines...),
+	)
 }

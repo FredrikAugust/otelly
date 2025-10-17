@@ -82,7 +82,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mainPageModel.width = msg.Width
 		m.mainPageModel.height = msg.Height - 1
 
-		m.tracePageModel.width = msg.Width
+		m.tracePageModel.SetWidth(msg.Width)
 		m.tracePageModel.height = msg.Height - 1
 	case MessageGoToTrace:
 		m.currentPage = PageTrace

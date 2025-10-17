@@ -50,6 +50,10 @@ func (m ResourceModel) Update(msg tea.Msg) (ResourceModel, tea.Cmd) {
 }
 
 func (m ResourceModel) getResourceAndResourceAggregation(resourceID string) (ResourceModel, tea.Cmd) {
+	if resourceID == "" {
+		return m, nil
+	}
+
 	getResourceCmd := func() tea.Msg {
 		res, err := m.db.GetResource(resourceID)
 		if err != nil {

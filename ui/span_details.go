@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
+	"github.com/fredrikaugust/otelly/ui/helpers"
 	"go.uber.org/zap"
 )
 
@@ -51,6 +52,7 @@ func (m SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.waterfallModel.width = m.width - 4
+		m.waterfallModel.height = 10
 		m.resourceModel.width = m.width - 4
 		m.spanAttributeModel.width = m.width - 4
 	case MessageSetSelectedSpan:
@@ -60,7 +62,15 @@ func (m SpanDetailsModel) Update(msg tea.Msg) (SpanDetailsModel, tea.Cmd) {
 		m.resourceModel, cmd = m.resourceModel.getResourceAndResourceAggregation(msg.Span.ResourceID)
 		cmds = append(cmds, cmd)
 	case MessageReceivedTraceSpans:
-		m.waterfallModel.spans = msg.Spans
+		if len(msg.Spans) == 0 {
+			break
+		}
+		tree, err := helpers.BuildTree(msg.Spans)
+		if err != nil {
+			zap.L().Warn("could not build tree", zap.Error(err))
+			break
+		}
+		m.waterfallModel.tree = tree
 	}
 
 	m.waterfallModel, cmd = m.waterfallModel.Update(msg)
@@ -108,6 +118,7 @@ func (m SpanDetailsModel) View() string {
 				TextSecondary.Render(m.span.ID),
 			),
 			lipgloss.NewStyle().Bold(true).Render(m.span.Name),
+			"",
 			m.waterfallModel.View(),
 			"",
 			m.spanAttributeModel.View(),
