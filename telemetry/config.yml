@@ -16,6 +16,9 @@ exporters:
 
 service:
   pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [otelly]
     traces:
       receivers: [otlp]
       exporters: [otelly]

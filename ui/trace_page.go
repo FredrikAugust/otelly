@@ -81,7 +81,7 @@ func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "ctrl+c", "q":
-			cmds = append(cmds, func() tea.Msg { return MessageReturnToMainPage{} })
+			cmds = append(cmds, func() tea.Msg { return MessageGoToMainPage{} })
 		case "j", "down":
 			if m.cursor != len(m.spans)-1 {
 				m.cursor += 1

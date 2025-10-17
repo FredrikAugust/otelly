@@ -73,11 +73,13 @@ func (s SpanTableModel) Update(msg tea.Msg) (SpanTableModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+l":
-			s.db.Clear()
+			s.db.ClearSpans()
 			s.table.SetCursor(0)
 			s.spans = make([]db.SpanWithResource, 0)
 			s.table.SetRows(make([]table.Row, 0))
 			cmds = append(cmds, func() tea.Msg { return MessageSetSelectedSpan{} })
+		case "2":
+			cmds = append(cmds, func() tea.Msg { return MessageGoToLogs{} })
 		case "enter":
 			if s.GetSelectedSpanID() != "" {
 				cmds = append(cmds, func() tea.Msg {

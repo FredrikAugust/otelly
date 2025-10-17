@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -99,7 +100,17 @@ func (m SpanWaterfallModel) View() string {
 		lineIdx++
 	}
 
+	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
+
+	if lipgloss.Height(content) > m.height {
+		content = lipgloss.JoinVertical(
+			lipgloss.Left,
+			lipgloss.JoinVertical(0, lines[:m.height-1]...),
+			TextTertiary.Render(fmt.Sprintf("+ %v spans", len(lines)-m.height+1)),
+		)
+	}
+
 	return baseStyle.Render(
-		lipgloss.JoinVertical(lipgloss.Left, lines...),
+		content,
 	)
 }

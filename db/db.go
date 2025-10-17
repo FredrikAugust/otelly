@@ -3,6 +3,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 
 	"github.com/jmoiron/sqlx"
@@ -38,7 +39,7 @@ func (d *Database) Close() error {
 
 func (d *Database) Migrate(ctx context.Context) error {
 	migrations := []string{
-		"CREATE TABLE IF NOT EXISTS resource (id VARCHAR PRIMARY KEY, service_name VARCHAR, service_namespace VARCHAR)",
+		`CREATE TABLE IF NOT EXISTS resource (id VARCHAR PRIMARY KEY, service_name VARCHAR, service_namespace VARCHAR)`,
 		`CREATE TABLE IF NOT EXISTS span (
 			id VARCHAR PRIMARY KEY,
 			name VARCHAR,
@@ -50,6 +51,16 @@ func (d *Database) Migrate(ctx context.Context) error {
 			status_message VARCHAR,
 			attributes JSON,
 			resource_id VARCHAR,
+			FOREIGN KEY (resource_id) REFERENCES resource (id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS log (
+			span_id VARCHAR,
+			body VARCHAR,
+			timestamp TIMESTAMP,
+			severity_number INTEGER,
+			severity_text VARCHAR,
+			resource_id VARCHAR,
+			attributes JSON,
 			FOREIGN KEY (resource_id) REFERENCES resource (id)
 		)`,
 	}
@@ -64,4 +75,8 @@ func (d *Database) Migrate(ctx context.Context) error {
 	slog.Info("finished migrating DB", "numMigrations", len(migrations))
 
 	return nil
+}
+
+func (d *Database) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return d.sqlDB.BeginTx(ctx, &sql.TxOptions{})
 }

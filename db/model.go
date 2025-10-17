@@ -28,6 +28,16 @@ type SpanWithResource struct {
 	ServiceNamespace string `db:"service_namespace"`
 }
 
+type Log struct {
+	SpanID         sql.NullString `db:"span_id"`
+	Body           string         `db:"body"`
+	Timestamp      time.Time      `db:"timestamp"`
+	SeverityNumber int            `db:"severity_number"`
+	SeverityText   string         `db:"severity_text"`
+	ResourceID     string         `db:"resource_id"`
+	Attributes     map[string]any `db:"attributes"`
+}
+
 type Resource struct {
 	ID               string `db:"id"`
 	ServiceName      string `db:"service_name"`

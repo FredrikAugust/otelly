@@ -1,10 +1,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -15,9 +15,6 @@ import (
 
 // InsertResourceSpans inserts the resource and all encompassing spans
 // into the database.
-//
-// Needs to be optimised to use batch insert. Now it runs N queries where
-// N is |spans|.
 func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 	resName, exists := spans.Resource().Attributes().Get(string(semconv.ServiceNameKey))
 	if !exists {
@@ -29,13 +26,18 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 	}
 	resID := fmt.Sprintf("%s:%s", resName.Str(), resNamespace.Str())
 
-	_, err := d.sqlDB.Exec(`INSERT OR IGNORE INTO resource VALUES ($1, $2, $3)`,
+	tx, err := d.BeginTx(context.Background())
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`INSERT OR IGNORE INTO resource VALUES ($1, $2, $3)`,
 		resID,
 		resName.Str(),
 		resNamespace.Str(),
 	)
 	if err != nil {
-		slog.Warn("couldn't insert resource", "resourceID", resID)
+		tx.Rollback()
 		return err
 	}
 
@@ -48,7 +50,7 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 
 			zap.L().Debug("inserting new span", zap.Bool("root", span.ParentSpanID().IsEmpty()), zap.String("name", span.Name()))
 
-			_, err = d.sqlDB.Exec(
+			_, err = tx.Exec(
 				`INSERT INTO span VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 				span.SpanID().String(),
 				span.Name(),
@@ -62,21 +64,17 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 				resID,
 			)
 			if err != nil {
-				slog.Warn("failed to insert span", "spanID", span.SpanID().String(), "error", err)
+				tx.Rollback()
 				return err
 			}
 		}
 	}
 
-	return nil
+	return tx.Commit()
 }
 
-func (d *Database) Clear() error {
+func (d *Database) ClearSpans() error {
 	_, err := d.sqlDB.Exec(`TRUNCATE TABLE span`)
-	if err != nil {
-		return err
-	}
-	_, err = d.sqlDB.Exec(`TRUNCATE TABLE resource`)
 	if err != nil {
 		return err
 	}
@@ -98,11 +96,8 @@ func (d *Database) GetResource(id string) (*Resource, error) {
 		id,
 	)
 	if err != nil {
-		slog.Warn("failed to get resource", "id", id)
 		return nil, err
 	}
-
-	slog.Debug("got resource", "id", id)
 
 	return &res, nil
 }
@@ -131,11 +126,8 @@ func (d *Database) GetRootSpans() []SpanWithResource {
 			s.start_time DESC`,
 	)
 	if err != nil {
-		slog.Warn("could not get root spans", "error", err)
 		return spans
 	}
-
-	slog.Debug("got root spans", "len", len(spans))
 
 	return spans
 }
