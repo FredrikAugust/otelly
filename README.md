@@ -69,10 +69,12 @@ Contributions are very welcome:)
 - [x] move DB calls into `tea.Cmd` to not block
 - [ ] make graph realtime (difficulties encountered with clocks starting
       alongside eachother)
-- [ ] add logs page
+- [x] add logs page
+- [ ] make logs page show logs
+- [ ] add helper text for navigation
 - [ ] add logs for span/trace on trace page
 - [ ] use tape for better illustrations
-- [ ] fix bug where the ordering of spans is not the same on main page and trace
+- [x] fix bug where the ordering of spans is not the same on main page and trace
       view and sometimes the names of spans on trace page aren't showing
 
 > [!NOTE]  
