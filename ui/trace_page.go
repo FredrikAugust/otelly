@@ -3,11 +3,12 @@ package ui
 import (
 	"fmt"
 	"math"
-	"time"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/db"
@@ -29,6 +30,8 @@ type TracePageModel struct {
 	spanAttributeModel SpanAttributeModel
 	waterfallModel     SpanWaterfallModel
 	traceTreeViewModel TraceTreeViewModel
+
+	viewportModel viewport.Model
 
 	width  int
 	height int
@@ -59,6 +62,7 @@ func CreateTracePageModel(db *db.Database) TracePageModel {
 		spanAttributeModel: CreateSpanAttributeModel(),
 		waterfallModel:     CreateSpanWaterfallModel(),
 		traceTreeViewModel: CreateTraceTreeViewModel(),
+		viewportModel:      viewport.New(0, 0),
 	}
 }
 
@@ -69,9 +73,21 @@ func (m TracePageModel) Init() tea.Cmd {
 func (m *TracePageModel) SetWidth(w int) {
 	m.width = w
 
-	m.spanAttributeModel.width = w
-	m.traceTreeViewModel.width = int(math.Floor(float64(w)/float64(2))) - 5
-	m.waterfallModel.width = int(math.Ceil(float64(w) / float64(2)))
+	m.spanAttributeModel.width = w - 2
+
+	m.viewportModel.Width = w - 2 // borders
+
+	m.traceTreeViewModel.width = int(math.Floor(float64(m.viewportModel.Width)/float64(2))) - 5
+	m.waterfallModel.width = int(math.Ceil(float64(m.viewportModel.Width) / float64(2)))
+}
+
+func (m *TracePageModel) SetHeight(h int) {
+	m.height = h
+
+	m.viewportModel.Height = h - 2 - 10 - 2 - 1 // viewport - header - spanattributes - borders - help view
+	m.waterfallModel.height = 999999            // we don't want to limit it
+
+	m.spanAttributeModel.height = 10 - 2 // borders
 }
 
 func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
@@ -96,6 +112,8 @@ func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 			m.cursor = len(m.spans) - 1
 		}
 	case MessageGoToTrace:
+		m.cursor = 0
+		m.viewportModel.YOffset = 0
 		cmds = append(cmds, m.getTrace(msg.TraceID))
 	case MessageReceivedTraceSpans:
 		m.spans = msg.Spans
@@ -107,12 +125,33 @@ func (m TracePageModel) Update(msg tea.Msg) (TracePageModel, tea.Cmd) {
 			m.waterfallModel.tree = tree
 			m.traceTreeViewModel.tree = tree
 		}
-		selectedSpan := m.spans[m.cursor]
-		m.spanAttributeModel.SetAttributes(selectedSpan.Attributes)
+	}
+
+	m.updateSpanAttributes()
+
+	// We purposefully don't call out to viewportModel.Update here
+	// as we want to have a scroll where you don't scroll down unless
+	// you're at the bottom of the viewport.
+	scrollPadding := 1
+	if m.cursor >= m.viewportModel.YOffset+m.viewportModel.Height-1-scrollPadding {
+		m.viewportModel.SetYOffset(m.cursor - m.viewportModel.Height + 1 + scrollPadding)
+	}
+	if m.cursor < m.viewportModel.YOffset+scrollPadding {
+		m.viewportModel.SetYOffset(m.cursor - scrollPadding)
 	}
 
 	m.waterfallModel.cursor = m.cursor
 	m.traceTreeViewModel.cursor = m.cursor
+
+	m.viewportModel.SetContent(
+		lipgloss.JoinHorizontal(0,
+			lipgloss.JoinVertical(0,
+				m.traceTreeViewModel.View(),
+			),
+			lipgloss.NewStyle().Width(5).Render(""),
+			lipgloss.JoinVertical(0, m.waterfallModel.View()),
+		),
+	)
 
 	return m, tea.Batch(cmds...)
 }
@@ -137,29 +176,29 @@ func (m TracePageModel) View() string {
 
 	container := lipgloss.NewStyle().Width(m.width).Height(m.height)
 
+	helpView := m.help.View(m)
+	scrollPosView := TextSecondary.Render(fmt.Sprintf("%v / %v", m.cursor+1, m.viewportModel.TotalLineCount()))
+
 	return container.Render(
 		lipgloss.JoinVertical(0,
-			header(m.tree.Item.Span.TraceID, m.tree.Item.Span.Name),
-			"",
-			lipgloss.JoinHorizontal(0,
-				lipgloss.JoinVertical(0,
-					m.traceTreeViewModel.View(),
+			m.headerView(),
+			lipgloss.NewStyle().Width(m.viewportModel.Width).Border(lipgloss.NormalBorder()).BorderForeground(ColorBorderForeground).Render(
+				m.viewportModel.View(),
+				lipgloss.JoinHorizontal(0,
+					helpView,
+					strings.Repeat(" ", m.viewportModel.Width-lipgloss.Width(helpView)-lipgloss.Width(scrollPosView)),
+					scrollPosView,
 				),
-				lipgloss.NewStyle().Width(5).Render(""),
-				lipgloss.JoinVertical(0, m.waterfallModel.View()),
 			),
-			"",
-			m.help.View(m),
-			"",
-			lipgloss.JoinHorizontal(0,
-				"resource", // TODO: create a component here
-				m.spanAttributeModel.View(),
-			),
+			lipgloss.NewStyle().Width(m.spanAttributeModel.width).Height(m.spanAttributeModel.height).Border(lipgloss.NormalBorder()).BorderForeground(ColorBorderForeground).Render(m.spanAttributeModel.View()),
 		),
 	)
 }
 
-func header(traceID, name string) string {
+func (m *TracePageModel) headerView() string {
+	traceID := m.tree.Item.Span.TraceID
+	name := m.tree.Item.Span.Name
+
 	return lipgloss.JoinVertical(lipgloss.Top,
 		TextTertiary.Render("#"+traceID),
 		lipgloss.JoinHorizontal(
@@ -170,19 +209,15 @@ func header(traceID, name string) string {
 	)
 }
 
-func spanView(item helpers.TraceTreeNodeItem, selected bool) string {
-	style := lipgloss.
-		NewStyle()
-
-	if selected {
-		style = style.Background(ColorAccent)
+// updateSpanAttributes gets the span under the cursor and
+// sets the span attributes model to that span's attributes.
+//
+// If no span is under cursor it no-ops.
+func (m *TracePageModel) updateSpanAttributes() {
+	if len(m.spans) == 0 {
+		return
 	}
 
-	secondaryText := item.Span.ServiceName + " • " + item.Span.Duration.Round(time.Millisecond).String()
-	if item.DurationOfParent != 1 {
-		pctOfParentSpan := item.DurationOfParent * 100
-		secondaryText += fmt.Sprintf(" (%.1f%%)", pctOfParentSpan)
-	}
-
-	return style.Render(item.Span.Name) + " " + TextTertiary.Render(secondaryText)
+	selectedSpan := m.spans[m.cursor]
+	m.spanAttributeModel.SetAttributes(selectedSpan.Attributes)
 }

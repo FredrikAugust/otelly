@@ -90,10 +90,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mainPageModel.height = msg.Height - 1
 
 		m.tracePageModel.SetWidth(msg.Width)
-		m.tracePageModel.height = msg.Height - 1
+		m.tracePageModel.SetHeight(msg.Height - 1)
 	case MessageGoToTrace:
 		m.currentPage = PageTrace
-		m.tracePageModel.cursor = 0
 		cmds = append(cmds, m.tracePageModel.Init())
 	case MessageGoToMainPage:
 		m.currentPage = PageMain

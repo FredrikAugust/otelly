@@ -60,7 +60,7 @@ func (m SpanWaterfallModel) View() string {
 		width = max(width, 1)
 
 		// The duration from the last startTime (parent) to this one. Duration between starts.
-		delayStr := TextSecondary.Render("↪" + item.Span.StartTime.Sub(item.ParentStartTime).Round(time.Millisecond).String())
+		delayStr := TextTertiary.Render("↪" + item.Span.StartTime.Sub(item.ParentStartTime).Round(time.Millisecond).String())
 		marginLeft := int(math.Round(float64(item.Span.StartTime.Sub(minTime)) / float64(maxTime.Sub(minTime)) * float64(m.width)))
 
 		var backgroundColor, foregroundColor lipgloss.Color

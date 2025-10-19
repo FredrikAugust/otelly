@@ -102,7 +102,7 @@ func (m SpanDetailsModel) View() string {
 		Width(m.width-2).
 		Height(m.height-2).
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(ColorBorderForeground).
 		Padding(0, 1)
 
 	if m.span.ID == "" {

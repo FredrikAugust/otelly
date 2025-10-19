@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
 
@@ -11,12 +12,14 @@ import (
 type SpanAttributeModel struct {
 	attributes map[string]any
 
-	width int
+	width  int
+	height int
 }
 
 func CreateSpanAttributeModel() SpanAttributeModel {
 	return SpanAttributeModel{
 		attributes: nil,
+		height:     5,
 	}
 }
 
@@ -58,6 +61,12 @@ func (m SpanAttributeModel) View() string {
 				lipgloss.NewStyle().Render(v.(string)),
 			),
 		)
+	}
+
+	// we treat 0 as show everything
+	if len(attributeStrs)+1 > m.height {
+		attributeStrs = attributeStrs[:m.height-2] // subtract one for help text and one for title
+		attributeStrs = append(attributeStrs, TextTertiary.Render(fmt.Sprintf("+ %v attributes", len(keys)-m.height)))
 	}
 
 	return lipgloss.NewStyle().
