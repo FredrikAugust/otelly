@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/ui"
 )
 
@@ -105,12 +106,66 @@ func TestTable_ItemViewsInViewport(t *testing.T) {
 		re, _ := regexp.Compile("my text")
 		matches := re.FindAllString(view, 100)
 
-		if len(table.ItemViewsInViewport()) != 2 {
-			t.Fatalf("table calculates wrong number of visible items: %v", len(table.ItemViewsInViewport()))
-		}
-
 		if len(matches) != 2 {
 			t.Fatalf("only found %v/2 matches in %v", len(matches), view)
+		}
+	})
+}
+
+func TestTable_Navigation(t *testing.T) {
+	t.Run("navigate up and down the table", func(t *testing.T) {
+		table := ui.NewTableModel()
+		table.SetHeight(4) // means 2 rows for content
+		table.SetWidth(20)
+		table.SetRowHeight(1)
+		d1 := ui.NewDefaultTableItemDelegate()
+		d1.ContentFn = func() []string { return []string{"string1"} }
+		d2 := ui.NewDefaultTableItemDelegate()
+		d2.ContentFn = func() []string { return []string{"string2"} }
+		d3 := ui.NewDefaultTableItemDelegate()
+		d3.ContentFn = func() []string { return []string{"string3"} }
+		d4 := ui.NewDefaultTableItemDelegate()
+		d4.ContentFn = func() []string { return []string{"string4"} }
+		table.SetItems([]ui.TableItemDelegate{
+			d1,
+			d2,
+			d3,
+			d4,
+		})
+
+		tc := []struct {
+			key            tea.KeyMsg
+			expectExist    []string
+			expectNotExist []string
+		}{
+			{tea.KeyMsg{Type: tea.KeyUp}, []string{"string1", "string2"}, []string{"string3", "string4"}},
+			{tea.KeyMsg{Type: tea.KeyDown}, []string{"string1", "string2"}, []string{"string3", "string4"}},
+			{tea.KeyMsg{Type: tea.KeyDown}, []string{"string2", "string3"}, []string{"string1", "string4"}},
+			{tea.KeyMsg{Type: tea.KeyDown}, []string{"string3", "string4"}, []string{"string1", "string2"}},
+			{tea.KeyMsg{Type: tea.KeyUp}, []string{"string3", "string4"}, []string{"string1", "string2"}},
+			{tea.KeyMsg{Type: tea.KeyUp}, []string{"string2", "string3"}, []string{"string1", "string4"}},
+			{tea.KeyMsg{Type: tea.KeyUp}, []string{"string1", "string2"}, []string{"string3", "string4"}},
+			{tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'G'}}, []string{"string3", "string4"}, []string{"string1", "string2"}},
+			{tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}, []string{"string1", "string2"}, []string{"string3", "string4"}},
+		}
+
+		var view string
+
+		for _, c := range tc {
+			table, _ = table.Update(c.key)
+			view = table.View()
+
+			for _, s := range c.expectExist {
+				if !strings.Contains(view, s) {
+					t.Fatalf("can't find string %v in %v", s, view)
+				}
+			}
+
+			for _, s := range c.expectNotExist {
+				if strings.Contains(view, s) {
+					t.Fatalf("shouldn't find string %v in %v", s, view)
+				}
+			}
 		}
 	})
 }

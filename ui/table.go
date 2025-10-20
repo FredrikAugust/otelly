@@ -2,6 +2,7 @@ package ui
 
 import (
 	"strconv"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -70,7 +71,7 @@ func (m TableModel) Update(msg tea.Msg) (TableModel, tea.Cmd) {
 		case "g":
 			m.cursorRow = 0
 		case "G":
-			m.cursorRow = len(m.items) - 1
+			m.cursorRow = len(m.itemViews) - 1
 		}
 
 		m.cursorRow = helpers.Clamp(0, m.cursorRow, len(m.items)-1)
@@ -81,31 +82,34 @@ func (m TableModel) Update(msg tea.Msg) (TableModel, tea.Cmd) {
 		}
 	}
 
+	m.updateYOffset()
+
 	return m, nil
+}
+
+// updateYOffset calculates and sets the yOffset which is how far up/down the viewport is scrolled.
+func (m *TableModel) updateYOffset() {
+	selectedItemYOffset := m.cursorRow * m.rowHeight
+	if selectedItemYOffset >= m.yOffset+m.contentHeight() {
+		m.yOffset += selectedItemYOffset - (m.yOffset + m.contentHeight()) + 1
+	} else if selectedItemYOffset < m.yOffset {
+		m.yOffset -= m.yOffset - selectedItemYOffset
+	}
 }
 
 func (m TableModel) contentHeight() int {
 	return m.height - 2
 }
 
-func (m TableModel) ItemViewsInViewport() [][]string {
-	beginOffset := m.yOffset / m.rowHeight
-	endOffset := (m.yOffset / m.rowHeight) + (m.contentHeight() / m.rowHeight)
-
-	return m.itemViews[beginOffset:helpers.Clamp(beginOffset, endOffset, len(m.itemViews))]
-}
-
 func (m TableModel) View() string {
-	itemViews := m.ItemViewsInViewport()
-
-	if len(itemViews) == 0 {
+	if len(m.itemViews) == 0 {
 		return "no items"
 	}
 
-	numCols := len(itemViews[0])
+	numCols := len(m.itemViews[0])
 
-	rows := make([]string, len(itemViews))
-	for i, cols := range itemViews {
+	rows := make([]string, len(m.itemViews))
+	for i, cols := range m.itemViews {
 		row := ""
 		for j, col := range cols {
 			style := lipgloss.NewStyle().Width(m.width / numCols).MaxWidth(m.width / numCols).Height(m.rowHeight).MaxHeight(m.rowHeight)
@@ -117,13 +121,14 @@ func (m TableModel) View() string {
 		rows[i] = row
 	}
 
+	rowStack := helpers.VStack(rows...)
+	rowStack = strings.Join(strings.Split(rowStack, "\n")[m.yOffset:], "\n")
+
 	return lipgloss.NewStyle().Height(m.height).Width(m.width).Render(
 		helpers.VStack(
 			m.HeaderView(),
-			lipgloss.NewStyle().Height(m.height-2).Render(
-				helpers.VStack(
-					rows...,
-				),
+			lipgloss.NewStyle().Height(m.height-2).MaxHeight(m.height-2).Render(
+				rowStack,
 			),
 			m.HelpView(),
 		),
