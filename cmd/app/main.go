@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/db"
 	"github.com/fredrikaugust/otelly/telemetry"
@@ -37,7 +38,8 @@ func main() {
 		}
 	}()
 
-	if err := ui.Start(ctx, bus, db); err != nil {
+	p := tea.NewProgram(ui.NewEntryModel(), tea.WithAltScreen(), tea.WithContext(ctx))
+	if _, err := p.Run(); err != nil {
 		slog.Error("failed to start ui", "error", err)
 	}
 
