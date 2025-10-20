@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 
@@ -13,6 +14,12 @@ import (
 
 type Database struct {
 	sqlDB *sqlx.DB
+
+	// resourceLock will be held by the resource writing to the resource
+	// table as it will be contested when the collector flushes new spans+logs
+	// with the same _new_ resource. sadly the on conflict ignore isn't fast
+	// enough to catch the conflict.
+	resourceLock sync.Mutex
 }
 
 func NewDB() (*Database, error) {
@@ -79,4 +86,8 @@ func (d *Database) Migrate(ctx context.Context) error {
 
 func (d *Database) BeginTx(ctx context.Context) (*sql.Tx, error) {
 	return d.sqlDB.BeginTx(ctx, &sql.TxOptions{})
+}
+
+func (d *Database) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return d.sqlDB.ExecContext(ctx, query, args...)
 }

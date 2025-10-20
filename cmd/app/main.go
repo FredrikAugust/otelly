@@ -38,18 +38,18 @@ func main() {
 		}
 	}()
 
-	logs, err := db.GetLogs()
+	logs, err := db.GetLogs(ctx)
 	if err != nil {
 		zap.L().Error("couldn't get logs", zap.Error(err))
 		return
 	}
-	spans, err := db.GetSpans()
+	spans, err := db.GetSpans(ctx)
 	if err != nil {
 		zap.L().Error("couldn't get spans", zap.Error(err))
 		return
 	}
 
-	p := tea.NewProgram(ui.NewEntryModel(spans, logs), tea.WithAltScreen(), tea.WithContext(ctx))
+	p := tea.NewProgram(ui.NewEntryModel(spans, logs, bus), tea.WithAltScreen(), tea.WithContext(ctx))
 	if _, err := p.Run(); err != nil {
 		slog.Error("failed to start ui", "error", err)
 	}

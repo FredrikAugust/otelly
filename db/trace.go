@@ -6,39 +6,23 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.uber.org/zap"
 )
 
 // InsertResourceSpans inserts the resource and all encompassing spans
 // into the database.
 func (d *Database) InsertResourceSpans(ctx context.Context, spans ptrace.ResourceSpans) error {
-	resName, exists := spans.Resource().Attributes().Get(string(semconv.ServiceNameKey))
-	if !exists {
-		resName = pcommon.NewValueStr("unknown")
+	resID, err := d.InsertResource(ctx, spans.Resource())
+	if err != nil {
+		return err
 	}
-	resNamespace, exists := spans.Resource().Attributes().Get(string(semconv.ServiceNamespaceKey))
-	if !exists {
-		resNamespace = pcommon.NewValueStr("unknown")
-	}
-	resID := fmt.Sprintf("%s:%s", resName.Str(), resNamespace.Str())
 
 	tx, err := d.BeginTx(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not start transaction: %w", err)
 	}
-
-	_, err = tx.Exec(`INSERT OR IGNORE INTO resource VALUES ($1, $2, $3)`,
-		resID,
-		resName.Str(),
-		resNamespace.Str(),
-	)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
+	defer tx.Rollback()
 
 	for _, scopeSpans := range spans.ScopeSpans().All() {
 		for _, span := range scopeSpans.Spans().All() {
@@ -49,8 +33,9 @@ func (d *Database) InsertResourceSpans(ctx context.Context, spans ptrace.Resourc
 
 			zap.L().Debug("inserting new span", zap.Bool("root", span.ParentSpanID().IsEmpty()), zap.String("name", span.Name()))
 
-			_, err = tx.Exec(
-				`INSERT INTO span VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+			_, err = tx.ExecContext(
+				ctx,
+				`INSERT INTO span VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				span.SpanID().String(),
 				span.Name(),
 				span.StartTimestamp().AsTime(),
@@ -63,13 +48,18 @@ func (d *Database) InsertResourceSpans(ctx context.Context, spans ptrace.Resourc
 				resID,
 			)
 			if err != nil {
-				tx.Rollback()
-				return err
+				zap.L().Warn("failed to create span", zap.String("name", span.Name()), zap.String("resourceID", resID))
+				return fmt.Errorf("failed inserting span: %w", err)
 			}
 		}
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 func (d *Database) ClearSpans() error {
@@ -81,9 +71,10 @@ func (d *Database) ClearSpans() error {
 	return nil
 }
 
-func (d *Database) GetSpans() ([]Span, error) {
+func (d *Database) GetSpans(ctx context.Context) ([]Span, error) {
 	spans := make([]Span, 0)
-	err := d.sqlDB.Select(
+	err := d.sqlDB.SelectContext(
+		ctx,
 		&spans,
 		`
 		SELECT

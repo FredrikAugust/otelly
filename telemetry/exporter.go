@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.uber.org/zap"
 )
 
 const ExporterName = "otelly"
@@ -65,27 +66,55 @@ func createLogs(ctx context.Context, set exporter.Settings, cfg component.Config
 func traceReceiver(ctx context.Context, td ptrace.Traces, bus *bus.TransportBus, db *db.Database) error {
 	var err error
 
+	zap.L().Debug("received spans", zap.Int("spanCount", td.SpanCount()))
+
 	for _, resourceSpans := range td.ResourceSpans().All() {
-		bus.TraceBus <- resourceSpans
+		// bus.TraceBus <- resourceSpans
 		e := db.InsertResourceSpans(ctx, resourceSpans)
 		if e != nil {
 			err = errors.Join(err, e)
 		}
 	}
 
-	return err
+	if err != nil {
+		zap.L().Warn("couldn't insert new spans into DB", zap.Error(err))
+		return err
+	}
+
+	spans, err := db.GetSpans(ctx)
+	if err != nil {
+		return err
+	}
+
+	bus.SpanBus <- spans
+
+	return nil
 }
 
 func logReceiver(ctx context.Context, ld plog.Logs, bus *bus.TransportBus, db *db.Database) error {
 	var err error
 
+	zap.L().Debug("received logs", zap.Int("logRecordCount", ld.LogRecordCount()))
+
 	for _, resourceLogs := range ld.ResourceLogs().All() {
-		bus.LogBus <- resourceLogs
+		// bus.LogBus <- resourceLogs
 		e := db.InsertResourceLogs(ctx, resourceLogs)
 		if e != nil {
 			err = errors.Join(err, e)
 		}
 	}
 
-	return err
+	if err != nil {
+		zap.L().Warn("couldn't insert new logs into DB", zap.Error(err))
+		return err
+	}
+
+	logs, err := db.GetLogs(ctx)
+	if err != nil {
+		return err
+	}
+
+	bus.LogBus <- logs
+
+	return nil
 }

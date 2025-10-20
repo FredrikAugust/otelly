@@ -4,39 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.uber.org/zap"
 )
 
 func (d *Database) InsertResourceLogs(ctx context.Context, logs plog.ResourceLogs) error {
-	resName, exists := logs.Resource().Attributes().Get(string(semconv.ServiceNameKey))
-	if !exists {
-		resName = pcommon.NewValueStr("unknown")
+	resID, err := d.InsertResource(ctx, logs.Resource())
+	if err != nil {
+		return err
 	}
-	resNamespace, exists := logs.Resource().Attributes().Get(string(semconv.ServiceNamespaceKey))
-	if !exists {
-		resNamespace = pcommon.NewValueStr("unknown")
-	}
-	resID := fmt.Sprintf("%s:%s", resName.Str(), resNamespace.Str())
 
 	tx, err := d.BeginTx(ctx)
 	if err != nil {
 		return err
 	}
-
-	_, err = tx.Exec(`INSERT OR IGNORE INTO resource VALUES ($1, $2, $3)`,
-		resID,
-		resName.Str(),
-		resNamespace.Str(),
-	)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
+	defer tx.Rollback()
 
 	for _, scopeLogs := range logs.ScopeLogs().All() {
 		for _, logRecord := range scopeLogs.LogRecords().All() {
@@ -47,17 +30,9 @@ func (d *Database) InsertResourceLogs(ctx context.Context, logs plog.ResourceLog
 
 			zap.L().Debug("inserting new log record", zap.String("body", logRecord.Body().Str()))
 
-			_, err = tx.Exec(
-				`
-				INSERT INTO log VALUES (
-					$1,
-					$2,
-					$3,
-					$4,
-					$5,
-					$6,
-					$7
-				)`,
+			_, err = tx.ExecContext(
+				ctx,
+				`INSERT INTO log VALUES (?, ?, ?, ?, ?, ?, ?)`,
 				sql.NullString{String: logRecord.SpanID().String(), Valid: !logRecord.SpanID().IsEmpty()},
 				logRecord.Body().Str(),
 				logRecord.Timestamp().AsTime(),
@@ -67,7 +42,6 @@ func (d *Database) InsertResourceLogs(ctx context.Context, logs plog.ResourceLog
 				attrs,
 			)
 			if err != nil {
-				tx.Rollback()
 				return err
 			}
 		}
@@ -85,9 +59,10 @@ func (d *Database) ClearLogs() error {
 	return nil
 }
 
-func (d *Database) GetLogs() ([]Log, error) {
+func (d *Database) GetLogs(ctx context.Context) ([]Log, error) {
 	logs := make([]Log, 0)
-	err := d.sqlDB.Select(
+	err := d.sqlDB.SelectContext(
+		ctx,
 		&logs,
 		`
 		SELECT
