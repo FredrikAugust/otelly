@@ -14,7 +14,7 @@ import (
 
 // InsertResourceSpans inserts the resource and all encompassing spans
 // into the database.
-func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
+func (d *Database) InsertResourceSpans(ctx context.Context, spans ptrace.ResourceSpans) error {
 	resName, exists := spans.Resource().Attributes().Get(string(semconv.ServiceNameKey))
 	if !exists {
 		resName = pcommon.NewValueStr("unknown")
@@ -25,7 +25,7 @@ func (d *Database) InsertResourceSpans(spans ptrace.ResourceSpans) error {
 	}
 	resID := fmt.Sprintf("%s:%s", resName.Str(), resNamespace.Str())
 
-	tx, err := d.BeginTx(context.Background())
+	tx, err := d.BeginTx(ctx)
 	if err != nil {
 		return err
 	}
@@ -79,4 +79,23 @@ func (d *Database) ClearSpans() error {
 	}
 
 	return nil
+}
+
+func (d *Database) GetSpans() ([]Span, error) {
+	spans := make([]Span, 0)
+	err := d.sqlDB.Select(
+		&spans,
+		`
+		SELECT
+			*
+		FROM
+			span
+		ORDER BY
+			start_time DESC`,
+	)
+	if err != nil {
+		return spans, err
+	}
+
+	return spans, nil
 }

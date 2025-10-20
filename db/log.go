@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (d *Database) InsertResourceLogs(logs plog.ResourceLogs) error {
+func (d *Database) InsertResourceLogs(ctx context.Context, logs plog.ResourceLogs) error {
 	resName, exists := logs.Resource().Attributes().Get(string(semconv.ServiceNameKey))
 	if !exists {
 		resName = pcommon.NewValueStr("unknown")
@@ -23,7 +23,7 @@ func (d *Database) InsertResourceLogs(logs plog.ResourceLogs) error {
 	}
 	resID := fmt.Sprintf("%s:%s", resName.Str(), resNamespace.Str())
 
-	tx, err := d.BeginTx(context.Background())
+	tx, err := d.BeginTx(ctx)
 	if err != nil {
 		return err
 	}

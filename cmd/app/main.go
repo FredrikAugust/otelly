@@ -32,13 +32,24 @@ func main() {
 	defer db.Close()
 
 	go func() {
-		if err := telemetry.Start(ctx, bus); err != nil {
+		if err := telemetry.Start(ctx, bus, db); err != nil {
 			slog.Error("failed to start receiver", "error", err)
 			cancel()
 		}
 	}()
 
-	p := tea.NewProgram(ui.NewEntryModel(), tea.WithAltScreen(), tea.WithContext(ctx))
+	logs, err := db.GetLogs()
+	if err != nil {
+		zap.L().Error("couldn't get logs", zap.Error(err))
+		return
+	}
+	spans, err := db.GetSpans()
+	if err != nil {
+		zap.L().Error("couldn't get spans", zap.Error(err))
+		return
+	}
+
+	p := tea.NewProgram(ui.NewEntryModel(spans, logs), tea.WithAltScreen(), tea.WithContext(ctx))
 	if _, err := p.Run(); err != nil {
 		slog.Error("failed to start ui", "error", err)
 	}
@@ -46,13 +57,13 @@ func main() {
 	cancel()
 
 	<-ctx.Done()
-	slog.Info("application quit successfully")
+	zap.L().Info("application quit successfully")
 }
 
 func configureLogging() func() error {
 	logFile, err := os.OpenFile("debug.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		slog.Error("could not set up logger", "error", err)
+		zap.L().Error("could not set up logger", zap.Error(err))
 		os.Exit(1)
 	}
 
