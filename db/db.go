@@ -15,7 +15,7 @@ import (
 type Database struct {
 	sqlDB *sqlx.DB
 
-	// resourceLock will be held by the resource writing to the resource
+	// resourceLock will be held when writing to the resource
 	// table as it will be contested when the collector flushes new spans+logs
 	// with the same _new_ resource. sadly the on conflict ignore isn't fast
 	// enough to catch the conflict.

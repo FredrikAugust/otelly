@@ -43,7 +43,7 @@ func (d *Database) InsertResourceSpans(ctx context.Context, spans ptrace.Resourc
 				span.TraceID().String(),
 				sql.NullString{String: span.ParentSpanID().String(), Valid: !span.ParentSpanID().IsEmpty()},
 				span.Status().Code().String(),
-				sql.NullString{String: span.Status().Code().String(), Valid: span.Status().Message() != ""},
+				sql.NullString{String: span.Status().Code().String(), Valid: span.Status().Code().String() != ""},
 				attrs,
 				resID,
 			)

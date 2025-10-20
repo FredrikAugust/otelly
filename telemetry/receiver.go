@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 )
 
-// Builds factories which amount to ghe components needed
+// Builds factories which amount to the components needed
 // to set up a collector.
 func createCollectorFactories(bus *bus.TransportBus, db *db.Database) (otelcol.Factories, error) {
 	var err error
