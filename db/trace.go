@@ -90,3 +90,14 @@ func (d *Database) GetSpans(ctx context.Context) ([]Span, error) {
 
 	return spans, nil
 }
+
+func FilterRootSpans(spans []Span) []Span {
+	rootSpans := make([]Span, 0)
+	for _, span := range spans {
+		if !span.ParentSpanID.Valid {
+			rootSpans = append(rootSpans, span)
+		}
+	}
+
+	return rootSpans
+}

@@ -39,7 +39,7 @@ func NewEntryModel(spans []db.Span, logs []db.Log, bus *bus.TransportBus) tea.Mo
 		spans:       spans,
 		logs:        logs,
 
-		spansPageModel: NewSpansPageModel(spans),
+		spansPageModel: NewSpansPageModel(db.FilterRootSpans(spans)),
 		bus:            bus,
 	}
 }
@@ -138,7 +138,7 @@ func (m EntryModel) listenForLogs() tea.Cmd {
 
 func (m *EntryModel) updateSpans(spans []db.Span) {
 	m.spans = spans
-	m.spansPageModel.SetSpans(spans)
+	m.spansPageModel.SetSpans(db.FilterRootSpans(spans))
 }
 
 func (m *EntryModel) updateLogs(logs []db.Log) {
