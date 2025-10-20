@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml/badge.svg)](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml)
 
+[![OtterWise Coverage](https://img.shields.io/endpoint?url=https://otterwise.app/badge/github/fredrikaugust/otelly/coverage/1dd6ecc0-faba-4776-8e29-85fac32aa937)](https://otterwise.app/github/fredrikaugust/otelly)
+
 A TUI for viewing and debugging with OTEL signals locally.
 Built with [bubbletea](https://github.com/charmbracelet/bubbletea),
 [lipgloss](https://github.com/charmbracelet/lipgloss),
