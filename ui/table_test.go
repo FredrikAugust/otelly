@@ -1,12 +1,14 @@
 package ui_test
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/ui"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTable(t *testing.T) {
@@ -14,6 +16,12 @@ func TestTable(t *testing.T) {
 		table := ui.NewTableModel()
 		table.SetHeight(10)
 		table.SetWidth(100)
+		table.SetColumnDefinitions([]ui.ColumnDefinition{
+			{1, "title"},
+			{1, "title"},
+			{1, "title"},
+			{1, "title"},
+		})
 
 		d := ui.NewDefaultTableItemDelegate()
 		d.ContentFn = func() []string { return []string{"my item", "dogs", "xy", "hounds"} }
@@ -34,6 +42,12 @@ func TestTable(t *testing.T) {
 		table := ui.NewTableModel()
 		table.SetHeight(10)
 		table.SetWidth(8) // should leave 2 width for each cell
+		table.SetColumnDefinitions([]ui.ColumnDefinition{
+			{1, "title"},
+			{1, "title"},
+			{1, "title"},
+			{1, "title"},
+		})
 		d := ui.NewDefaultTableItemDelegate()
 		d.ContentFn = func() []string { return []string{"my item", "dogs", "xy", "hounds"} }
 		table.SetItems([]ui.TableItemDelegate{d})
@@ -60,6 +74,7 @@ func TestTable_ItemViewsInViewport(t *testing.T) {
 		table.SetHeight(10) // means 8 rows for content
 		table.SetWidth(100)
 		table.SetRowHeight(2)
+		table.SetColumnDefinitions([]ui.ColumnDefinition{{1, "title"}})
 		d := ui.NewDefaultTableItemDelegate()
 		d.ContentFn = func() []string {
 			return []string{
@@ -88,6 +103,7 @@ func TestTable_ItemViewsInViewport(t *testing.T) {
 		table.SetHeight(10) // means 8 rows for content
 		table.SetWidth(100)
 		table.SetRowHeight(4)
+		table.SetColumnDefinitions([]ui.ColumnDefinition{{1, "title"}})
 		d := ui.NewDefaultTableItemDelegate()
 		d.ContentFn = func() []string {
 			return []string{
@@ -118,6 +134,7 @@ func TestTable_Navigation(t *testing.T) {
 		table.SetHeight(4) // means 2 rows for content
 		table.SetWidth(20)
 		table.SetRowHeight(1)
+		table.SetColumnDefinitions([]ui.ColumnDefinition{{1, "title"}})
 		d1 := ui.NewDefaultTableItemDelegate()
 		d1.ContentFn = func() []string { return []string{"string1"} }
 		d2 := ui.NewDefaultTableItemDelegate()
@@ -168,4 +185,30 @@ func TestTable_Navigation(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestTable_ColumnWidths(t *testing.T) {
+	for _, tc := range []struct {
+		w        int
+		wrs      []int
+		expected []int
+	}{
+		{10, []int{1, 1}, []int{5, 5}},
+		{6, []int{8, 8, 8}, []int{2, 2, 2}},
+		{12, []int{1, 2, 3}, []int{2, 4, 6}},
+		{10, []int{3, 2}, []int{6, 4}},
+		{5, []int{1}, []int{5}},
+	} {
+		t.Run("calculates correct column width", func(t *testing.T) {
+			table := ui.NewTableModel()
+			table.SetWidth(tc.w)
+			cds := make([]ui.ColumnDefinition, len(tc.wrs))
+			for i, wr := range tc.wrs {
+				cds[i] = ui.ColumnDefinition{wr, fmt.Sprintf("col %v", i)}
+			}
+			table.SetColumnDefinitions(cds)
+
+			assert.Equal(t, tc.expected, table.ColumnWidths(), cds)
+		})
+	}
 }

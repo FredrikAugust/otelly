@@ -27,10 +27,16 @@ func NewDefaultTableItemDelegate() DefaultTableItemDelegate {
 	}
 }
 
+type ColumnDefinition struct {
+	WidthRatio int
+	Title      string
+}
+
 type TableModel struct {
-	items     []TableItemDelegate
-	itemViews [][]string
-	rowHeight int
+	items             []TableItemDelegate
+	itemViews         [][]string
+	columnDefinitions []ColumnDefinition
+	rowHeight         int
 
 	cursorRow    int
 	cursorColumn int
@@ -47,9 +53,14 @@ func (m *TableModel) SetRowHeight(i int) {
 
 func NewTableModel() TableModel {
 	return TableModel{
-		itemViews: make([][]string, 0),
-		rowHeight: 1,
+		itemViews:         make([][]string, 0),
+		columnDefinitions: make([]ColumnDefinition, 0),
+		rowHeight:         1,
 	}
+}
+
+func (m *TableModel) SetColumnDefinitions(cd []ColumnDefinition) {
+	m.columnDefinitions = cd
 }
 
 func (m TableModel) Init() tea.Cmd {
@@ -106,13 +117,13 @@ func (m TableModel) View() string {
 		return "no items"
 	}
 
-	numCols := len(m.itemViews[0])
+	colWidths := m.ColumnWidths()
 
 	rows := make([]string, len(m.itemViews))
 	for i, cols := range m.itemViews {
 		row := ""
 		for j, col := range cols {
-			style := lipgloss.NewStyle().Width(m.width / numCols).MaxWidth(m.width / numCols).Height(m.rowHeight).MaxHeight(m.rowHeight)
+			style := lipgloss.NewStyle().Width(colWidths[j]).MaxWidth(colWidths[j]).Height(m.rowHeight).MaxHeight(m.rowHeight)
 			if m.cursorRow == i && m.cursorColumn == j {
 				style = style.Background(helpers.ColorAccentBackground).Foreground(helpers.ColorBlack)
 			}
@@ -135,14 +146,37 @@ func (m TableModel) View() string {
 	)
 }
 
+func (m TableModel) ColumnWidths() []int {
+	widths := make([]int, len(m.columnDefinitions))
+
+	totalRatios := 0
+	for _, col := range m.columnDefinitions {
+		totalRatios += col.WidthRatio
+	}
+
+	for i, col := range m.columnDefinitions {
+		widths[i] = int(float64(m.width) * (float64(col.WidthRatio) / float64(totalRatios)))
+	}
+
+	return widths
+}
+
 func (m TableModel) HelpView() string {
-	return helpers.HStack(
-		strconv.Itoa(m.cursorRow+1), " / ", strconv.Itoa(len(m.items)),
-	)
+	return lipgloss.NewStyle().Bold(true).Render(strconv.Itoa(m.cursorRow+1), "/", strconv.Itoa(len(m.items)))
 }
 
 func (m TableModel) HeaderView() string {
-	return "header"
+	colWidths := m.ColumnWidths()
+
+	var view strings.Builder
+
+	for i, col := range m.columnDefinitions {
+		view.WriteString(
+			lipgloss.NewStyle().Width(colWidths[i]).Bold(true).Render(col.Title),
+		)
+	}
+
+	return view.String()
 }
 
 func (m *TableModel) SetItems(items []TableItemDelegate) {

@@ -20,7 +20,13 @@ type SpansPageModel struct {
 }
 
 func NewSpansPageModel(spans []db.Span) SpansPageModel {
-	return SpansPageModel{spans: spans, tableModel: NewTableModel()}
+	tm := NewTableModel()
+	tm.SetColumnDefinitions([]ColumnDefinition{
+		{3, "Name"},
+		{1, "Start time"},
+		{1, "Duration"},
+	})
+	return SpansPageModel{spans: spans, tableModel: tm}
 }
 
 func (m SpansPageModel) Init() tea.Cmd {
