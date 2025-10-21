@@ -2,6 +2,7 @@ package helpers
 
 import "cmp"
 
+// Clamp clamps a value to a min and max passed in. Both bounds are inclusive.
 func Clamp[T cmp.Ordered](min, n, max T) T {
 	if n < min {
 		return min
