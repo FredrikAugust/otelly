@@ -212,3 +212,27 @@ func TestTable_ColumnWidths(t *testing.T) {
 		})
 	}
 }
+
+func TestTable_SelectedItem(t *testing.T) {
+	t.Run("returns correct set item", func(t *testing.T) {
+		table := ui.NewTableModel()
+		table.SetHeight(4) // means 2 rows for content
+		table.SetWidth(20)
+		table.SetRowHeight(1)
+		table.SetColumnDefinitions([]ui.ColumnDefinition{{1, "title"}})
+		d1 := ui.NewDefaultTableItemDelegate()
+		d1.ContentFn = func() []string { return []string{"string1"} }
+		d2 := ui.NewDefaultTableItemDelegate()
+		d2.ContentFn = func() []string { return []string{"string2"} }
+		table.SetItems([]ui.TableItemDelegate{d1, d2})
+
+		assert.Equal(t, d1.Content(), (*table.SelectedItem()).Content())
+		table, _ = table.Update(tea.KeyMsg{Type: tea.KeyDown})
+		assert.Equal(t, d2.Content(), (*table.SelectedItem()).Content())
+	})
+
+	t.Run("nil for empty items", func(t *testing.T) {
+		table := ui.NewTableModel()
+		assert.Nil(t, table.SelectedItem())
+	})
+}

@@ -195,3 +195,11 @@ func (m *TableModel) SetWidth(i int) {
 func (m *TableModel) SetHeight(i int) {
 	m.height = i
 }
+
+func (m *TableModel) SelectedItem() *TableItemDelegate {
+	if len(m.items) > 0 {
+		return &m.items[m.cursorRow]
+	}
+
+	return nil
+}
