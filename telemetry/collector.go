@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/fredrikaugust/otelly/bus"
+	"github.com/fredrikaugust/otelly/db"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
@@ -13,11 +14,11 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func Start(ctx context.Context, bus *bus.TransportBus) error {
+func Start(ctx context.Context, bus *bus.TransportBus, db *db.Database) error {
 	slog.Info("starting collector")
 	col, err := otelcol.NewCollector(otelcol.CollectorSettings{
 		Factories: func() (otelcol.Factories, error) {
-			return createCollectorFactories(bus)
+			return createCollectorFactories(bus, db)
 		},
 		BuildInfo: component.NewDefaultBuildInfo(),
 		LoggingOptions: []zap.Option{

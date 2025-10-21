@@ -21,13 +21,6 @@ type Span struct {
 	ResourceID string `db:"resource_id"`
 }
 
-type SpanWithResource struct {
-	Span
-
-	ServiceName      string `db:"service_name"`
-	ServiceNamespace string `db:"service_namespace"`
-}
-
 type Log struct {
 	SpanID         sql.NullString `db:"span_id"`
 	Body           string         `db:"body"`

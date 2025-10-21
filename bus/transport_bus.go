@@ -3,18 +3,17 @@
 package bus
 
 import (
-	"go.opentelemetry.io/collector/pdata/plog"
-	"go.opentelemetry.io/collector/pdata/ptrace"
+	"github.com/fredrikaugust/otelly/db"
 )
 
 type TransportBus struct {
-	TraceBus chan ptrace.ResourceSpans
-	LogBus   chan plog.ResourceLogs
+	SpanBus chan []db.Span
+	LogBus  chan []db.Log
 }
 
 func NewTransportBus() *TransportBus {
 	return &TransportBus{
-		TraceBus: make(chan ptrace.ResourceSpans),
-		LogBus:   make(chan plog.ResourceLogs),
+		SpanBus: make(chan []db.Span),
+		LogBus:  make(chan []db.Log),
 	}
 }

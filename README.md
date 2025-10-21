@@ -1,6 +1,6 @@
 # Otelly
 
-[![CI](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml/badge.svg)](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml)
+[![CI](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml/badge.svg)](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FredrikAugust/otelly/graph/badge.svg?token=6BI0AXNBOD)](https://codecov.io/gh/FredrikAugust/otelly)
 
 A TUI for viewing and debugging with OTEL signals locally.
 Built with [bubbletea](https://github.com/charmbracelet/bubbletea),
