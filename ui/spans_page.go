@@ -63,7 +63,12 @@ func (m SpansPageModel) tableView() string {
 func (m SpansPageModel) detailView() string {
 	// width  = 1/3 of window width
 	// height = viewport height -  border
-	container := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(helpers.ColorBorder).Width(int(math.Ceil(float64(m.width)*1.0/3.0 - 2.0))).Height(m.height - 2)
+	container := lipgloss.
+		NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(helpers.ColorBorder).
+		Width(int(math.Ceil(float64(m.width)*(1.0/3.0) - 2.0))).
+		Height(m.height - 2)
 
 	return container.Render("detail")
 }
