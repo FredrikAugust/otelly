@@ -53,6 +53,7 @@ func (d *Database) Migrate(ctx context.Context) error {
 			start_time TIMESTAMP,
 			duration_ns INTEGER,
 			trace_id VARCHAR,
+			kind VARCHAR,
 			parent_span_id VARCHAR,
 			status_code VARCHAR,
 			status_message VARCHAR,

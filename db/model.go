@@ -7,6 +7,7 @@ import (
 
 type Span struct {
 	TraceID      string         `db:"trace_id"`
+	Kind         string         `db:"kind"`
 	ID           string         `db:"id"`
 	Name         string         `db:"name"`
 	StartTime    time.Time      `db:"start_time"`

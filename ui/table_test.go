@@ -226,9 +226,9 @@ func TestTable_SelectedItem(t *testing.T) {
 		d2.ContentFn = func() []string { return []string{"string2"} }
 		table.SetItems([]ui.TableItemDelegate{d1, d2})
 
-		assert.Equal(t, d1.Content(), (*table.SelectedItem()).Content())
+		assert.Equal(t, d1.Content(), (table.SelectedItem()).Content())
 		table, _ = table.Update(tea.KeyMsg{Type: tea.KeyDown})
-		assert.Equal(t, d2.Content(), (*table.SelectedItem()).Content())
+		assert.Equal(t, d2.Content(), (table.SelectedItem()).Content())
 	})
 
 	t.Run("nil for empty items", func(t *testing.T) {

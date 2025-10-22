@@ -35,12 +35,13 @@ func (d *Database) InsertResourceSpans(ctx context.Context, spans ptrace.Resourc
 
 			_, err = tx.ExecContext(
 				ctx,
-				`INSERT INTO span VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				`INSERT INTO span VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				span.SpanID().String(),
 				span.Name(),
 				span.StartTimestamp().AsTime(),
 				span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).Nanoseconds(),
 				span.TraceID().String(),
+				span.Kind().String(),
 				sql.NullString{String: span.ParentSpanID().String(), Valid: !span.ParentSpanID().IsEmpty()},
 				span.Status().Code().String(),
 				sql.NullString{String: span.Status().Code().String(), Valid: span.Status().Code().String() != ""},

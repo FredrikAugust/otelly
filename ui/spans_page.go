@@ -16,7 +16,8 @@ type SpansPageModel struct {
 	width  int
 	height int
 
-	tableModel TableModel
+	tableModel           TableModel
+	spanDetailPanelModel SpanDetailPanelModel
 }
 
 func NewSpansPageModel(spans []db.Span) SpansPageModel {
@@ -26,11 +27,19 @@ func NewSpansPageModel(spans []db.Span) SpansPageModel {
 		{1, "Start time"},
 		{1, "Duration"},
 	})
-	return SpansPageModel{spans: spans, tableModel: tm}
+	return SpansPageModel{
+		spans:                spans,
+		tableModel:           tm,
+		spanDetailPanelModel: NewSpanDetailPanelModel(),
+	}
 }
 
 func (m SpansPageModel) Init() tea.Cmd {
-	return helpers.Cmdize(MsgSpanPageUpdateTable{})
+	return tea.Batch(
+		helpers.Cmdize(MsgSpanPageUpdateTable{}),
+		m.tableModel.Init(),
+		m.spanDetailPanelModel.Init(),
+	)
 }
 
 func (m SpansPageModel) Update(msg tea.Msg) (SpansPageModel, tea.Cmd) {
@@ -45,6 +54,16 @@ func (m SpansPageModel) Update(msg tea.Msg) (SpansPageModel, tea.Cmd) {
 	m.tableModel, cmd = m.tableModel.Update(msg)
 	cmds = append(cmds, cmd)
 
+	item, ok := m.tableModel.SelectedItem().(*spanTableItemDelegate)
+	if ok {
+		m.spanDetailPanelModel.SetSpan(item.span)
+	} else {
+		m.spanDetailPanelModel.SetSpan(nil)
+	}
+
+	m.spanDetailPanelModel, cmd = m.spanDetailPanelModel.Update(msg)
+	cmds = append(cmds, cmd)
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -53,24 +72,21 @@ func (m SpansPageModel) View() string {
 }
 
 func (m SpansPageModel) tableView() string {
-	// width  = 2/3 of window width
-	// height = viewport height -  border
-	container := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(helpers.ColorBorder)
+	container := lipgloss.
+		NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(helpers.ColorBorder)
 
 	return container.Render(m.tableModel.View())
 }
 
 func (m SpansPageModel) detailView() string {
-	// width  = 1/3 of window width
-	// height = viewport height -  border
 	container := lipgloss.
 		NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(helpers.ColorBorder).
-		Width(int(math.Ceil(float64(m.width)*(1.0/3.0) - 2.0))).
-		Height(m.height - 2)
+		BorderForeground(helpers.ColorBorder)
 
-	return container.Render("detail")
+	return container.Render(m.spanDetailPanelModel.View())
 }
 
 func (m *SpansPageModel) SetSpans(spans []db.Span) {
@@ -78,17 +94,22 @@ func (m *SpansPageModel) SetSpans(spans []db.Span) {
 	m.updateTable()
 }
 
+type spanTableItemDelegate struct {
+	span *db.Span
+}
+
+func (d spanTableItemDelegate) Content() []string {
+	return []string{
+		d.span.Name,
+		d.span.StartTime.Format("15:04:05"),
+		d.span.Duration.Round(time.Microsecond).String(),
+	}
+}
+
 func (m *SpansPageModel) updateTable() {
 	items := make([]TableItemDelegate, len(m.spans))
 	for i, span := range m.spans {
-		d := NewDefaultTableItemDelegate()
-		d.ContentFn = func() []string {
-			return []string{
-				span.Name,
-				span.StartTime.Format("15:04:05"),
-				span.Duration.Round(time.Millisecond).String(),
-			}
-		}
+		d := &spanTableItemDelegate{span: &span}
 		items[i] = d
 	}
 	m.tableModel.SetItems(items)
@@ -96,10 +117,12 @@ func (m *SpansPageModel) updateTable() {
 
 func (m *SpansPageModel) SetWidth(w int) {
 	m.width = w
-	m.tableModel.SetWidth(int(math.Floor(float64(w)*2.0/3.0 - 2.0)))
+	m.tableModel.SetWidth(int(math.Floor(float64(w)*2.0/3.0)) - 2)
+	m.spanDetailPanelModel.SetWidth(int(math.Ceil(float64(w)*(1.0/3.0))) - 2)
 }
 
 func (m *SpansPageModel) SetHeight(h int) {
 	m.height = h
 	m.tableModel.SetHeight(h - 2)
+	m.spanDetailPanelModel.SetHeight(h - 2)
 }

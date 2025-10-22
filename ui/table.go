@@ -113,8 +113,10 @@ func (m TableModel) contentHeight() int {
 }
 
 func (m TableModel) View() string {
+	container := lipgloss.NewStyle().Height(m.height).Width(m.width)
+
 	if len(m.itemViews) == 0 {
-		return "no items"
+		return container.Align(lipgloss.Center, lipgloss.Center).Render("No items received")
 	}
 
 	colWidths := m.ColumnWidths()
@@ -135,7 +137,7 @@ func (m TableModel) View() string {
 	rowStack := helpers.VStack(rows...)
 	rowStack = strings.Join(strings.Split(rowStack, "\n")[m.yOffset:], "\n")
 
-	return lipgloss.NewStyle().Height(m.height).Width(m.width).Render(
+	return container.Render(
 		helpers.VStack(
 			m.HeaderView(),
 			lipgloss.NewStyle().Height(m.height-2).MaxHeight(m.height-2).Render(
@@ -196,9 +198,9 @@ func (m *TableModel) SetHeight(i int) {
 	m.height = i
 }
 
-func (m *TableModel) SelectedItem() *TableItemDelegate {
+func (m *TableModel) SelectedItem() TableItemDelegate {
 	if len(m.items) > 0 {
-		return &m.items[m.cursorRow]
+		return m.items[m.cursorRow]
 	}
 
 	return nil
