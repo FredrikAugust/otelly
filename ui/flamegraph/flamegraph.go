@@ -80,7 +80,7 @@ func findNodesBelongingToParent(parent *NodeInput, inputs []NodeInput, start, en
 						Name:      input.Name,
 						Duration:  input.Duration,
 						StartTime: input.StartTime,
-						WidthPct:  1,
+						WidthPct:  float64(input.Duration) / float64(end.Sub(start)),
 						Children:  findNodesBelongingToParent(&input, inputs, start, end),
 					},
 				}
