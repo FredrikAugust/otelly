@@ -50,6 +50,27 @@ func TestFlamegraph_Build(t *testing.T) {
 			return flamegraph.NodeInput{}
 		})
 
+		assert.ErrorContains(t, err, "can't build flamegraph from empty items")
+	})
+
+	t.Run("fails to build graph with no root", func(t *testing.T) {
+		_, err := flamegraph.Build([]testItem{
+			{
+				name:      "test",
+				duration:  10 * time.Second,
+				parentID:  "dog",
+				startTime: time.Now(),
+			},
+		}, func(t testItem) flamegraph.NodeInput {
+			return flamegraph.NodeInput{
+				ID:        t.name,
+				Name:      t.name,
+				Duration:  t.duration,
+				ParentID:  t.parentID,
+				StartTime: t.startTime,
+			}
+		})
+
 		assert.ErrorContains(t, err, "len(roots)=0")
 	})
 

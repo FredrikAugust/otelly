@@ -16,7 +16,6 @@ type Page uint
 
 const (
 	PageSpans Page = iota
-	PageLogs
 )
 
 type EntryModel struct {
@@ -107,19 +106,15 @@ func (m EntryModel) HeaderView() string {
 	container := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(helpers.ColorBorder).Width(m.width - 2).Height(1)
 
 	spans := helpers.NavigationPillBaseStyle
-	logs := helpers.NavigationPillBaseStyle
 
 	switch m.currentPage {
 	case PageSpans:
 		spans = spans.Background(helpers.ColorAccentBackground).Foreground(helpers.ColorBlack)
-	case PageLogs:
-		logs = logs.Background(helpers.ColorAccentBackground).Foreground(helpers.ColorBlack)
 	}
 
 	return container.Render(
 		helpers.HStack(
-			spans.Render("(1) Spans"),
-			logs.Render("(2) Logs"),
+			spans.Render("Spans"),
 		),
 	)
 }

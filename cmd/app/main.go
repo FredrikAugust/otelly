@@ -87,7 +87,7 @@ func configureLogging() func() error {
 }
 
 func configureDB(ctx context.Context) (*db.Database, error) {
-	db, err := db.NewDB()
+	db, err := db.NewDB("./local.db")
 	if err != nil {
 		return nil, err
 	}

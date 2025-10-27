@@ -90,7 +90,8 @@ func TestTable_ItemViewsInViewport(t *testing.T) {
 
 		view := table.View()
 
-		re, _ := regexp.Compile("my text")
+		re, err := regexp.Compile("my text")
+		assert.Nil(t, err)
 		matches := re.FindAllString(view, 100)
 
 		if len(matches) != 4 {
@@ -119,7 +120,8 @@ func TestTable_ItemViewsInViewport(t *testing.T) {
 
 		view := table.View()
 
-		re, _ := regexp.Compile("my text")
+		re, err := regexp.Compile("my text")
+		assert.Nil(t, err)
 		matches := re.FindAllString(view, 100)
 
 		if len(matches) != 2 {

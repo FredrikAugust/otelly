@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/zap"
@@ -25,6 +26,7 @@ func (d *Database) InsertResourceLogs(ctx context.Context, logs plog.ResourceLog
 		for _, logRecord := range scopeLogs.LogRecords().All() {
 			attrs, err := json.Marshal(logRecord.Attributes().AsRaw())
 			if err != nil {
+				zap.L().Warn("could not serialize log attributes to JSON", zap.Error(err))
 				attrs = []byte("{}")
 			}
 
@@ -42,12 +44,17 @@ func (d *Database) InsertResourceLogs(ctx context.Context, logs plog.ResourceLog
 				attrs,
 			)
 			if err != nil {
-				return err
+				zap.L().Warn("failed to create log", zap.String("body", logRecord.Body().Str()))
 			}
 		}
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed to commit transaction log: %w", err)
+	}
+
+	return nil
 }
 
 func (d *Database) ClearLogs() error {

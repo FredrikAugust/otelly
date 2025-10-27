@@ -28,6 +28,7 @@ func (d *Database) InsertResourceSpans(ctx context.Context, spans ptrace.Resourc
 		for _, span := range scopeSpans.Spans().All() {
 			attrs, err := json.Marshal(span.Attributes().AsRaw())
 			if err != nil {
+				zap.L().Warn("could not serialize span attributes to JSON", zap.Error(err))
 				attrs = []byte("{}")
 			}
 
@@ -44,27 +45,26 @@ func (d *Database) InsertResourceSpans(ctx context.Context, spans ptrace.Resourc
 				span.Kind().String(),
 				sql.NullString{String: span.ParentSpanID().String(), Valid: !span.ParentSpanID().IsEmpty()},
 				span.Status().Code().String(),
-				sql.NullString{String: span.Status().Code().String(), Valid: span.Status().Code().String() != ""},
+				sql.NullString{String: span.Status().Message(), Valid: span.Status().Message() != ""},
 				attrs,
 				resID,
 			)
 			if err != nil {
 				zap.L().Warn("failed to create span", zap.String("name", span.Name()), zap.String("resourceID", resID))
-				return fmt.Errorf("failed inserting span: %w", err)
 			}
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return fmt.Errorf("failed to commit transaction trace: %w", err)
 	}
 
 	return nil
 }
 
-func (d *Database) ClearSpans() error {
-	_, err := d.sqlDB.Exec(`TRUNCATE TABLE span`)
+func (d *Database) ClearSpans(ctx context.Context) error {
+	_, err := d.sqlDB.ExecContext(ctx, `TRUNCATE TABLE span`)
 	if err != nil {
 		return err
 	}
@@ -84,6 +84,29 @@ func (d *Database) GetSpans(ctx context.Context) ([]Span, error) {
 			span
 		ORDER BY
 			start_time DESC`,
+	)
+	if err != nil {
+		return spans, err
+	}
+
+	return spans, nil
+}
+
+func (d *Database) GetSpansForTrace(ctx context.Context, traceID string) ([]Span, error) {
+	spans := make([]Span, 0)
+	err := d.sqlDB.SelectContext(
+		ctx,
+		&spans,
+		`
+		SELECT
+			*
+		FROM
+			span
+		WHERE
+			trace_id = ?
+		ORDER BY
+			start_time DESC`,
+		traceID,
 	)
 	if err != nil {
 		return spans, err

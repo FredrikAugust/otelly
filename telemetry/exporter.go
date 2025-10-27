@@ -3,6 +3,8 @@ package telemetry
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
 
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/db"
@@ -64,57 +66,61 @@ func createLogs(ctx context.Context, set exporter.Settings, cfg component.Config
 }
 
 func traceReceiver(ctx context.Context, td ptrace.Traces, bus *bus.TransportBus, db *db.Database) error {
-	var err error
+	var wg sync.WaitGroup
 
 	zap.L().Debug("received spans", zap.Int("spanCount", td.SpanCount()))
 
 	for _, resourceSpans := range td.ResourceSpans().All() {
-		// bus.TraceBus <- resourceSpans
-		e := db.InsertResourceSpans(ctx, resourceSpans)
-		if e != nil {
-			err = errors.Join(err, e)
-		}
+		wg.Go(func() {
+			err := db.InsertResourceSpans(ctx, resourceSpans)
+			if err != nil {
+				zap.L().Warn("could not insert resource spans", zap.Error(err))
+			}
+		})
 	}
 
-	if err != nil {
-		zap.L().Warn("couldn't insert new spans into DB", zap.Error(err))
-		return err
-	}
+	wg.Wait()
 
+	// TODO: only send new ones
 	spans, err := db.GetSpans(ctx)
 	if err != nil {
 		return err
 	}
 
-	bus.SpanBus <- spans
-
-	return nil
+	select {
+	case bus.SpanBus <- spans:
+		return nil
+	case <-time.After(1 * time.Second):
+		return errors.New("trace receiver timed out after 1 second")
+	}
 }
 
 func logReceiver(ctx context.Context, ld plog.Logs, bus *bus.TransportBus, db *db.Database) error {
-	var err error
+	var wg sync.WaitGroup
 
 	zap.L().Debug("received logs", zap.Int("logRecordCount", ld.LogRecordCount()))
 
 	for _, resourceLogs := range ld.ResourceLogs().All() {
-		// bus.LogBus <- resourceLogs
-		e := db.InsertResourceLogs(ctx, resourceLogs)
-		if e != nil {
-			err = errors.Join(err, e)
-		}
+		resourceLogs := resourceLogs // capture loop variable
+		wg.Go(func() {
+			err := db.InsertResourceLogs(ctx, resourceLogs)
+			if err != nil {
+				zap.L().Warn("could not insert resource logs", zap.Error(err))
+			}
+		})
 	}
 
-	if err != nil {
-		zap.L().Warn("couldn't insert new logs into DB", zap.Error(err))
-		return err
-	}
+	wg.Wait()
 
 	logs, err := db.GetLogs(ctx)
 	if err != nil {
 		return err
 	}
 
-	bus.LogBus <- logs
-
-	return nil
+	select {
+	case bus.LogBus <- logs:
+		return nil
+	case <-time.After(1 * time.Second):
+		return errors.New("log receiver timed out after 1 second")
+	}
 }

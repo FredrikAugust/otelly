@@ -3,6 +3,7 @@
 package flamegraph
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -26,6 +27,10 @@ type NodeInput struct {
 }
 
 func Build[T any](items []T, retriever func(T) NodeInput) (Node, error) {
+	if len(items) == 0 {
+		return Node{}, errors.New("can't build flamegraph from empty items")
+	}
+
 	var start, end time.Time
 
 	nis := make([]NodeInput, len(items))
@@ -48,7 +53,7 @@ func Build[T any](items []T, retriever func(T) NodeInput) (Node, error) {
 	}
 
 	slices.SortFunc(nis, func(a, b NodeInput) int {
-		return int(b.StartTime.Sub(a.StartTime))
+		return b.StartTime.Compare(a.StartTime)
 	})
 
 	roots := findNodesBelongingToParent(nil, nis, start, end)

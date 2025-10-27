@@ -44,7 +44,7 @@ func (d *Database) InsertResource(ctx context.Context, res pcommon.Resource) (st
 	}
 	resID := fmt.Sprintf("%s:%s", resName.Str(), resNamespace.Str())
 
-	_, err := d.ExecContext(ctx, `INSERT OR IGNORE INTO resource VALUES (?, ?, ?)`,
+	_, err := d.ExecContext(ctx, `INSERT OR REPLACE INTO resource VALUES (?, ?, ?)`,
 		resID,
 		resName.Str(),
 		resNamespace.Str(),
