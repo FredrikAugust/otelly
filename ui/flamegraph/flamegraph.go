@@ -5,6 +5,7 @@ package flamegraph
 import (
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"time"
 )
@@ -15,7 +16,9 @@ type Node struct {
 	Duration  time.Duration
 	// WidthPct is a number 0 to 1 which is the width of the total time frame it should take up
 	WidthPct float64
-	Children []Node
+	// OffsetPct is a number 0 to 1 which is how far into the viewport it should begin
+	OffsetPct float64
+	Children  []Node
 }
 
 type NodeInput struct {
@@ -53,7 +56,7 @@ func Build[T any](items []T, retriever func(T) NodeInput) (Node, error) {
 	}
 
 	slices.SortFunc(nis, func(a, b NodeInput) int {
-		return b.StartTime.Compare(a.StartTime)
+		return a.StartTime.Compare(b.StartTime)
 	})
 
 	roots := findNodesBelongingToParent(nil, nis, start, end)
@@ -71,7 +74,12 @@ func Build[T any](items []T, retriever func(T) NodeInput) (Node, error) {
 func findNodesBelongingToParent(parent *NodeInput, inputs []NodeInput, start, end time.Time) []Node {
 	results := make([]Node, 0)
 
+	traceDuration := end.Sub(start)
+
 	for _, input := range inputs {
+		widthPct := float64(input.Duration) / float64(end.Sub(start))
+		offsetPct := float64(input.StartTime.Sub(start)) / float64(traceDuration)
+
 		if parent == nil {
 			// This means we're looking for the root node
 			if input.ParentID == "" {
@@ -80,7 +88,8 @@ func findNodesBelongingToParent(parent *NodeInput, inputs []NodeInput, start, en
 						Name:      input.Name,
 						Duration:  input.Duration,
 						StartTime: input.StartTime,
-						WidthPct:  float64(input.Duration) / float64(end.Sub(start)),
+						WidthPct:  widthPct,
+						OffsetPct: offsetPct,
 						Children:  findNodesBelongingToParent(&input, inputs, start, end),
 					},
 				}
@@ -94,11 +103,27 @@ func findNodesBelongingToParent(parent *NodeInput, inputs []NodeInput, start, en
 				Name:      input.Name,
 				Duration:  input.Duration,
 				StartTime: input.StartTime,
-				WidthPct:  float64(input.Duration) / float64(end.Sub(start)),
+				WidthPct:  widthPct,
+				OffsetPct: offsetPct,
 				Children:  findNodesBelongingToParent(&input, inputs, start, end),
 			})
 		}
 	}
 
 	return results
+}
+
+func (n *Node) All() iter.Seq2[int, *Node] {
+	return func(yield func(int, *Node) bool) {
+		if yield(0, n) == false {
+			return
+		}
+		for _, c := range n.Children {
+			for d, cn := range c.All() {
+				if yield(d+1, cn) == false {
+					return
+				}
+			}
+		}
+	}
 }

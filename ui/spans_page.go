@@ -20,7 +20,7 @@ type SpansPageModel struct {
 	spanDetailPanelModel SpanDetailPanelModel
 }
 
-func NewSpansPageModel(spans []db.Span) SpansPageModel {
+func NewSpansPageModel(spans []db.Span, db *db.Database) SpansPageModel {
 	tm := NewTableModel()
 	tm.SetColumnDefinitions([]ColumnDefinition{
 		{3, "Name"},
@@ -30,7 +30,7 @@ func NewSpansPageModel(spans []db.Span) SpansPageModel {
 	return SpansPageModel{
 		spans:                spans,
 		tableModel:           tm,
-		spanDetailPanelModel: NewSpanDetailPanelModel(),
+		spanDetailPanelModel: NewSpanDetailPanelModel(db),
 	}
 }
 
@@ -56,10 +56,11 @@ func (m SpansPageModel) Update(msg tea.Msg) (SpansPageModel, tea.Cmd) {
 
 	item, ok := m.tableModel.SelectedItem().(*spanTableItemDelegate)
 	if ok {
-		m.spanDetailPanelModel.SetSpan(item.span)
+		m.spanDetailPanelModel, cmd = m.spanDetailPanelModel.UpdateSpan(item.span)
 	} else {
-		m.spanDetailPanelModel.SetSpan(nil)
+		m.spanDetailPanelModel, cmd = m.spanDetailPanelModel.UpdateSpan(nil)
 	}
+	cmds = append(cmds, cmd)
 
 	m.spanDetailPanelModel, cmd = m.spanDetailPanelModel.Update(msg)
 	cmds = append(cmds, cmd)

@@ -32,13 +32,13 @@ type EntryModel struct {
 	bus *bus.TransportBus
 }
 
-func NewEntryModel(spans []db.Span, logs []db.Log, bus *bus.TransportBus) tea.Model {
+func NewEntryModel(spans []db.Span, logs []db.Log, bus *bus.TransportBus, database *db.Database) tea.Model {
 	return EntryModel{
 		currentPage: PageSpans,
 		spans:       spans,
 		logs:        logs,
 
-		spansPageModel: NewSpansPageModel(db.FilterRootSpans(spans)),
+		spansPageModel: NewSpansPageModel(db.FilterRootSpans(spans), database),
 		bus:            bus,
 	}
 }

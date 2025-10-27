@@ -49,7 +49,7 @@ func main() {
 		return
 	}
 
-	p := tea.NewProgram(ui.NewEntryModel(spans, logs, bus), tea.WithAltScreen(), tea.WithContext(ctx))
+	p := tea.NewProgram(ui.NewEntryModel(spans, logs, bus, db), tea.WithAltScreen(), tea.WithContext(ctx))
 	if _, err := p.Run(); err != nil {
 		slog.Error("failed to start ui", "error", err)
 	}
