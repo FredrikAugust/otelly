@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/db"
 	"github.com/fredrikaugust/otelly/telemetry"
@@ -31,26 +32,38 @@ func main() {
 	defer db.Close()
 
 	go func() {
-		if err := telemetry.Start(ctx, bus); err != nil {
+		if err := telemetry.Start(ctx, bus, db); err != nil {
 			slog.Error("failed to start receiver", "error", err)
 			cancel()
 		}
 	}()
 
-	if err := ui.Start(ctx, bus, db); err != nil {
+	logs, err := db.GetLogs(ctx)
+	if err != nil {
+		zap.L().Error("couldn't get logs", zap.Error(err))
+		return
+	}
+	spans, err := db.GetSpans(ctx)
+	if err != nil {
+		zap.L().Error("couldn't get spans", zap.Error(err))
+		return
+	}
+
+	p := tea.NewProgram(ui.NewEntryModel(spans, logs, bus, db), tea.WithAltScreen(), tea.WithContext(ctx))
+	if _, err := p.Run(); err != nil {
 		slog.Error("failed to start ui", "error", err)
 	}
 
 	cancel()
 
 	<-ctx.Done()
-	slog.Info("application quit successfully")
+	zap.L().Info("application quit successfully")
 }
 
 func configureLogging() func() error {
 	logFile, err := os.OpenFile("debug.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		slog.Error("could not set up logger", "error", err)
+		zap.L().Error("could not set up logger", zap.Error(err))
 		os.Exit(1)
 	}
 
@@ -74,7 +87,7 @@ func configureLogging() func() error {
 }
 
 func configureDB(ctx context.Context) (*db.Database, error) {
-	db, err := db.NewDB()
+	db, err := db.NewDB("./local.db")
 	if err != nil {
 		return nil, err
 	}

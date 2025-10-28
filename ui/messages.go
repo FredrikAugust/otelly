@@ -2,28 +2,14 @@ package ui
 
 import (
 	"github.com/fredrikaugust/otelly/db"
-	"go.opentelemetry.io/collector/pdata/plog"
-	"go.opentelemetry.io/collector/pdata/ptrace"
+	"github.com/fredrikaugust/otelly/ui/flamegraph"
 )
 
 type (
-	MessageGoToTrace    struct{ TraceID string }
-	MessageGoToMainPage struct{}
-	MessageGoToLogs     struct{}
+	MsgSpanPageUpdateTable struct{}
+	MsgNewSpans            struct{ spans []db.Span }
+	MsgNewLogs             struct{ logs []db.Log }
 
-	// MessageResourceSpansArrived signifies that the collector has received new spans
-	MessageResourceSpansArrived struct{ ResourceSpans ptrace.ResourceSpans }
-	MessageResourceLogsArrived  struct{ ResourceLogs plog.ResourceLogs }
-
-	MessageSetSelectedSpan struct{ Span db.SpanWithResource }
-
-	MessageUpdateRootSpans struct{ NewRootSpans []db.SpanWithResource }
-	MessageUpdateLogs      struct{ NewLogs []db.Log }
-
-	MessageResourceReceived            struct{ Resource db.Resource }
-	MessageResourceAggregationReceived struct {
-		Aggregation []db.SpansPerMinuteForServiceModel
-	}
-
-	MessageReceivedTraceSpans struct{ Spans []db.SpanWithResource }
+	MsgLoadTrace   struct{ traceID string }
+	MsgTreeUpdated struct{ tree flamegraph.Node }
 )

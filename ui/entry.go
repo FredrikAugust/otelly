@@ -1,213 +1,141 @@
-// Package ui contains the UI for the application
+// Package ui contains the bubbletea user interface
 package ui
 
 import (
-	"context"
-	"log/slog"
 	"reflect"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fredrikaugust/otelly/bus"
 	"github.com/fredrikaugust/otelly/db"
-	"go.opentelemetry.io/collector/pdata/plog"
-	"go.opentelemetry.io/collector/pdata/ptrace"
+	"github.com/fredrikaugust/otelly/ui/helpers"
 	"go.uber.org/zap"
 )
 
-func Start(ctx context.Context, bus *bus.TransportBus, db *db.Database) error {
-	slog.Info("initializing and running UI")
-
-	p := tea.NewProgram(
-		NewModel(bus, db),
-		tea.WithAltScreen(),
-		tea.WithContext(ctx),
-	)
-
-	if _, err := p.Run(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m Model) Init() tea.Cmd {
-	return tea.Batch(
-		m.mainPageModel.Init(),
-		m.logPageModel.Init(),
-		listenForNewSpans(m.bus.TraceBus),
-		listenForNewLogs(m.bus.LogBus),
-		m.fetchRootSpans(),
-		m.fetchLogs(),
-	)
-}
+type Page uint
 
 const (
-	PageMain = iota
-	PageTrace
-	PageLogs
+	PageSpans Page = iota
 )
 
-type Model struct {
-	currentPage int
+type EntryModel struct {
+	currentPage Page
 
-	mainPageModel  MainPageModel
-	tracePageModel TracePageModel
-	logPageModel   LogPageModel
+	width  int
+	height int
+
+	spans []db.Span
+	logs  []db.Log
+
+	spansPageModel SpansPageModel
 
 	bus *bus.TransportBus
-	db  *db.Database
-
-	height int
-	width  int
 }
 
-func NewModel(bus *bus.TransportBus, db *db.Database) *Model {
-	return &Model{
-		currentPage:    PageMain,
+func NewEntryModel(spans []db.Span, logs []db.Log, bus *bus.TransportBus, database *db.Database) tea.Model {
+	return EntryModel{
+		currentPage: PageSpans,
+		spans:       spans,
+		logs:        logs,
+
+		spansPageModel: NewSpansPageModel(db.FilterRootSpans(spans), database),
 		bus:            bus,
-		db:             db,
-		mainPageModel:  CreateMainPageModel(db),
-		tracePageModel: CreateTracePageModel(db),
-		logPageModel:   CreateLogPageModel(),
 	}
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("entrypoint update", "type", reflect.TypeOf(msg).Name())
-
-	var (
-		cmd  tea.Cmd
-		cmds = make([]tea.Cmd, 0)
+func (m EntryModel) Init() tea.Cmd {
+	return tea.Batch(
+		m.spansPageModel.Init(),
+		m.listenForLogs(),
+		m.listenForSpans(),
 	)
+}
+
+func (m EntryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	zap.L().Debug("received tea.Msg", zap.String("type", reflect.TypeOf(msg).Name()))
+
+	var cmd tea.Cmd
+	cmds := make([]tea.Cmd, 0)
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		m.width = msg.Width
 
-		m.mainPageModel.width = msg.Width
-		m.mainPageModel.height = msg.Height - 1
-
-		m.tracePageModel.SetWidth(msg.Width)
-		m.tracePageModel.SetHeight(msg.Height - 1)
-	case MessageGoToTrace:
-		m.currentPage = PageTrace
-		cmds = append(cmds, m.tracePageModel.Init())
-	case MessageGoToMainPage:
-		m.currentPage = PageMain
-		cmds = append(cmds, m.mainPageModel.Init())
-	case MessageGoToLogs:
-		m.currentPage = PageLogs
-	case MessageResourceSpansArrived:
-		cmds = append(
-			cmds,
-			listenForNewSpans(m.bus.TraceBus),
-			m.insertResourceSpans(msg.ResourceSpans),
-		)
-	case MessageResourceLogsArrived:
-		cmds = append(
-			cmds,
-			listenForNewLogs(m.bus.LogBus),
-			m.insertResourceLogs(msg.ResourceLogs),
-		)
-	case MessageUpdateRootSpans:
-		if len(msg.NewRootSpans) > 0 && len(m.mainPageModel.spanTable.spans) == 0 {
-			cmds = append(cmds, func() tea.Msg { return MessageSetSelectedSpan{Span: msg.NewRootSpans[0]} })
+		m.spansPageModel.SetHeight(msg.Height - 3) // - header
+		m.spansPageModel.SetWidth(msg.Width)
+	case tea.KeyMsg:
+		switch msg.String() {
+		case tea.KeyCtrlC.String(), "q":
+			cmds = append(cmds, tea.Quit)
 		}
-		m.mainPageModel.SetSpans(msg.NewRootSpans)
-	case MessageUpdateLogs:
-		m.logPageModel.logs = msg.NewLogs
+	case MsgNewSpans:
+		cmds = append(cmds, m.listenForSpans())
+		m.updateSpans(msg.spans)
+	case MsgNewLogs:
+		cmds = append(cmds, m.listenForLogs())
+		m.updateLogs(msg.logs)
 	}
 
 	switch m.currentPage {
-	case PageMain:
-		m.mainPageModel, cmd = m.mainPageModel.Update(msg)
-		cmds = append(cmds, cmd)
-	case PageTrace:
-		m.tracePageModel, cmd = m.tracePageModel.Update(msg)
-		cmds = append(cmds, cmd)
-	case PageLogs:
-		m.logPageModel, cmd = m.logPageModel.Update(msg)
+	case PageSpans:
+		m.spansPageModel, cmd = m.spansPageModel.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) View() string {
-	pageContent := ""
+func (m EntryModel) View() string {
+	var page string
 
 	switch m.currentPage {
-	case PageMain:
-		pageContent = m.mainPageModel.View()
-	case PageTrace:
-		pageContent = m.tracePageModel.View()
-	case PageLogs:
-		pageContent = m.logPageModel.View()
+	case PageSpans:
+		page = m.spansPageModel.View()
 	}
 
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		lipgloss.NewStyle().AlignHorizontal(lipgloss.Center).Width(m.width).Background(ColorAccent).Bold(true).Render("Otelly"),
-		pageContent,
+	return lipgloss.NewStyle().Width(m.width).Height(m.height).Render(
+		helpers.VStack(
+			m.HeaderView(),
+			page,
+		),
 	)
 }
 
-func (m Model) fetchRootSpans() tea.Cmd {
-	return func() tea.Msg {
-		newRootSpans := m.db.GetRootSpans()
+func (m EntryModel) HeaderView() string {
+	container := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(helpers.ColorBorder).Width(m.width - 2).Height(1)
 
-		return MessageUpdateRootSpans{
-			NewRootSpans: newRootSpans,
-		}
+	spans := helpers.NavigationPillBaseStyle
+
+	switch m.currentPage {
+	case PageSpans:
+		spans = spans.Background(helpers.ColorAccentBackground).Foreground(helpers.ColorBlack)
+	}
+
+	return container.Render(
+		helpers.HStack(
+			spans.Render("Spans"),
+		),
+	)
+}
+
+func (m EntryModel) listenForSpans() tea.Cmd {
+	return func() tea.Msg {
+		return MsgNewSpans{<-m.bus.SpanBus}
 	}
 }
 
-func (m Model) fetchLogs() tea.Cmd {
+func (m EntryModel) listenForLogs() tea.Cmd {
 	return func() tea.Msg {
-		newLogs, err := m.db.GetLogs()
-		if err != nil {
-			zap.L().Warn("could not fetch logs", zap.Error(err))
-			return nil
-		}
-
-		return MessageUpdateLogs{
-			NewLogs: newLogs,
-		}
+		return MsgNewLogs{<-m.bus.LogBus}
 	}
 }
 
-func (m Model) insertResourceSpans(resourceSpans ptrace.ResourceSpans) tea.Cmd {
-	return func() tea.Msg {
-		err := m.db.InsertResourceSpans(resourceSpans)
-		if err != nil {
-			zap.L().Warn("could not insert resource spans", zap.Error(err))
-			return nil
-		}
-		return m.fetchRootSpans()()
-	}
+func (m *EntryModel) updateSpans(spans []db.Span) {
+	m.spans = spans
+	m.spansPageModel.SetSpans(db.FilterRootSpans(spans))
 }
 
-func (m Model) insertResourceLogs(resourceLogs plog.ResourceLogs) tea.Cmd {
-	return func() tea.Msg {
-		err := m.db.InsertResourceLogs(resourceLogs)
-		if err != nil {
-			zap.L().Warn("could not insert resource logs", zap.Error(err))
-			return nil
-		}
-		return m.fetchLogs()()
-	}
-}
-
-func listenForNewSpans(spanChan chan ptrace.ResourceSpans) tea.Cmd {
-	return func() tea.Msg {
-		return MessageResourceSpansArrived{ResourceSpans: <-spanChan}
-	}
-}
-
-func listenForNewLogs(logChan chan plog.ResourceLogs) tea.Cmd {
-	return func() tea.Msg {
-		return MessageResourceLogsArrived{ResourceLogs: <-logChan}
-	}
+func (m *EntryModel) updateLogs(logs []db.Log) {
+	m.logs = logs
 }

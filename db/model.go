@@ -7,6 +7,7 @@ import (
 
 type Span struct {
 	TraceID      string         `db:"trace_id"`
+	Kind         string         `db:"kind"`
 	ID           string         `db:"id"`
 	Name         string         `db:"name"`
 	StartTime    time.Time      `db:"start_time"`
@@ -19,13 +20,6 @@ type Span struct {
 	Attributes map[string]any `db:"attributes"`
 
 	ResourceID string `db:"resource_id"`
-}
-
-type SpanWithResource struct {
-	Span
-
-	ServiceName      string `db:"service_name"`
-	ServiceNamespace string `db:"service_namespace"`
 }
 
 type Log struct {

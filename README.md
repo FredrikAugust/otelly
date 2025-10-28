@@ -1,6 +1,6 @@
 # Otelly
 
-[![CI](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml/badge.svg)](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml)
+[![CI](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml/badge.svg)](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FredrikAugust/otelly/graph/badge.svg?token=6BI0AXNBOD)](https://codecov.io/gh/FredrikAugust/otelly)
 
 A TUI for viewing and debugging with OTEL signals locally.
 Built with [bubbletea](https://github.com/charmbracelet/bubbletea),
@@ -12,8 +12,6 @@ A lot of inspiration has been taken from
 by [@ymtdzzz](https://github.com/ymtdzzz). You should check
 out that project for a much more complete alternative to this. They've
 done an amazing job.
-
-![a screenshot showing otelly in action](./assets/screenshot.png)
 
 ## Usage
 
@@ -29,7 +27,7 @@ This project uses [Taskfile.dev](https://taskfile.dev) to simplify running comma
 If you want to install all deps on MacOS:
 
 ```bash
-brew install krzko/tap/otelgen
+brew install krzko/tap/otelgen # just to seed with dummy data
 brew install go-task
 ```
 
@@ -47,37 +45,29 @@ Since the TUI takes up the main window, we write logs to `debug.log`.
 
 During testing, to avoid having to re-seed my development environment all the time,
 the application state is persisted to `local.db`. You can remove this to clear the
-state or use the application "clear state" feature (`ctrl+l` from table view).
-This will be changed before the first release so you can choose if you want
+state. This will be changed before the first release so you can choose if you want
 persistence or not.
-
-### Contributions
-
-Contributions are very welcome:)
 
 ## Features
 
-![flamegraph](./assets/flamegraph.png)
+**Spans**
 
-- See flamegraph of spans in a trace
-- See all incoming traces grouped by root spans on the overview page
+- View all root spans (traces) on the front page
+- View a summmary of the span's attributes and resource
+- See a flamegraph of the trace's spans
 
-### TODOs
+### Future plans
 
-- [x] after migrating to only returning new models, we need to re-work how we
-      handle sizing
-- [x] move DB calls into `tea.Cmd` to not block
-- [ ] make graph realtime (difficulties encountered with clocks starting
-      alongside eachother)
-- [x] add logs page
-- [ ] make logs page show logs
-- [ ] add helper text for navigation
-- [ ] add logs for span/trace on trace page
-- [ ] use tape for better illustrations
-- [x] fix bug where the ordering of spans is not the same on main page and trace
-      view and sometimes the names of spans on trace page aren't showing
+- Add detail page for spans to see more information
+- Filters and searching
+- Metrics & Logs
+- Add screenshots
 
-> [!NOTE]  
+## Contributions
+
+Contributions are very welcome!
+
+> [!NOTE]
 > This projects is partially intended as a learning project, and as such use of
 > AI is kept to a minimum.
 > I consult it from time to time to brainstorm or fix my SQL queries, but an
