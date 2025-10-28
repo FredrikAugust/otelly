@@ -57,8 +57,8 @@ func (d *Database) InsertResourceLogs(ctx context.Context, logs plog.ResourceLog
 	return nil
 }
 
-func (d *Database) ClearLogs() error {
-	_, err := d.sqlDB.Exec(`TRUNCATE TABLE log`)
+func (d *Database) ClearLogs(ctx context.Context) error {
+	_, err := d.ExecContext(ctx, `TRUNCATE TABLE log`)
 	if err != nil {
 		return err
 	}

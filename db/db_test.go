@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func DBTest(t *testing.T) {
+func TestDB(t *testing.T) {
 	t.Run("creates in-mem db and migrates", func(t *testing.T) {
 		db, err := getDB(t)
 		if err != nil {
