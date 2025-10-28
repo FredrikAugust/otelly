@@ -109,7 +109,7 @@ func (m SpanDetailPanelModel) traceView() string {
 	spans := make([]string, 0)
 
 	for _, c := range m.tree.All() {
-		width := int(c.WidthPct * float64(m.width))
+		width := helpers.Clamp(1, int(c.WidthPct*float64(m.width)), m.width)
 		offset := int(c.OffsetPct * float64(m.width))
 
 		name := lipgloss.NewStyle().Render(
