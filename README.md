@@ -1,5 +1,21 @@
 # Otelly
 
+> [!WARNING]
+> **Deprecated.** After dedicating some time to this I've come to the conclusion that I could create a better product, in less
+> time using either a GUI framework, or web technologies. Maybe I'll come back to the topic of OpenTelmetry visualisation in
+> the terminal in the future, but for now I'm going to focus my attention elsewhere.
+
+<img width=600 src="./assets/screenshot.png" />
+*Main page from old (more feature complete) version.*
+
+<img width="100%" src="./assets/detail.png" />
+*Detail page from old (more feature complete) version. Showing the hierarchy of spans in a trace, and the waterfall view for each.*
+
+<img width=600 src="./assets/new.png" />
+*Main page from the new version. The colours didn't want to collaborate.*
+
+
+
 [![CI](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml/badge.svg)](https://github.com/FredrikAugust/otelly/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FredrikAugust/otelly/graph/badge.svg?token=6BI0AXNBOD)](https://codecov.io/gh/FredrikAugust/otelly)
 
 A TUI for viewing and debugging with OTEL signals locally.
