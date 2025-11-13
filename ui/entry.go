@@ -94,22 +94,33 @@ func (m EntryModel) View() string {
 		page = m.spansPageModel.View()
 	}
 
-	return lipgloss.NewStyle().Width(m.width).Height(m.height).Render(
-		helpers.VStack(
-			m.HeaderView(),
-			page,
-		),
-	)
+	return lipgloss.NewStyle().
+		Width(m.width).
+		Height(m.height).
+		Background(helpers.ColorBackground).
+		Foreground(helpers.ColorForeground).
+		Render(
+			helpers.VStack(
+				m.HeaderView(),
+				page,
+			),
+		)
 }
 
 func (m EntryModel) HeaderView() string {
-	container := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(helpers.ColorBorder).Width(m.width - 2).Height(1)
+	container := lipgloss.NewStyle().
+		Background(helpers.ColorBackground).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(helpers.ColorBorder).
+		Width(m.width-2).
+		Padding(0, 1).
+		Height(1)
 
 	spans := helpers.NavigationPillBaseStyle
 
 	switch m.currentPage {
 	case PageSpans:
-		spans = spans.Background(helpers.ColorAccentBackground).Foreground(helpers.ColorBlack)
+		spans = spans.Background(helpers.ColorSecondary).Foreground(helpers.ColorSecondaryForeground)
 	}
 
 	return container.Render(

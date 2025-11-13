@@ -76,7 +76,9 @@ func (m SpansPageModel) tableView() string {
 	container := lipgloss.
 		NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(helpers.ColorBorder)
+		BorderForeground(helpers.ColorBorder).
+		BorderBackground(helpers.ColorBackground).
+		Background(helpers.ColorBackground)
 
 	return container.Render(m.tableModel.View())
 }

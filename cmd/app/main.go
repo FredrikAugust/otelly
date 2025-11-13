@@ -68,6 +68,8 @@ func configureLogging() func() error {
 	}
 
 	logCfg := zap.NewDevelopmentConfig()
+
+	// We don't show the date since this is meant to be used ephemerally for now.
 	logCfg.EncoderConfig.EncodeTime = func(t time.Time, pae zapcore.PrimitiveArrayEncoder) {
 		pae.AppendString(t.Format("15:04:05.000"))
 	}

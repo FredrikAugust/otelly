@@ -126,7 +126,8 @@ func (m SpanDetailPanelModel) traceView() string {
 					Width(width).
 					MaxWidth(width).
 					Inline(true).
-					Background(helpers.ColorBlue).
+					Background(helpers.ColorPrimary).
+					Foreground(helpers.ColorPrimaryForeground).
 					Render(name),
 			),
 		)

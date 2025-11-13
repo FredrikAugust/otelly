@@ -113,10 +113,10 @@ func (m TableModel) contentHeight() int {
 }
 
 func (m TableModel) View() string {
-	container := lipgloss.NewStyle().Height(m.height).Width(m.width)
+	container := lipgloss.NewStyle().Height(m.height).Width(m.width).Background(helpers.ColorBackground).Foreground(helpers.ColorForeground)
 
 	if len(m.itemViews) == 0 {
-		return container.Align(lipgloss.Center, lipgloss.Center).Render("No items received")
+		return container.Align(lipgloss.Center, lipgloss.Center).Render("Table has no items")
 	}
 
 	colWidths := m.ColumnWidths()
@@ -127,7 +127,9 @@ func (m TableModel) View() string {
 		for j, col := range cols {
 			style := lipgloss.NewStyle().Width(colWidths[j]).MaxWidth(colWidths[j]).Height(m.rowHeight).MaxHeight(m.rowHeight)
 			if m.cursorRow == i && m.cursorColumn == j {
-				style = style.Background(helpers.ColorAccentBackground).Foreground(helpers.ColorBlack)
+				style = style.Background(helpers.ColorSecondary).Foreground(helpers.ColorSecondaryForeground)
+			} else if m.cursorRow == i {
+				style = style.Background(helpers.ColorPrimary).Foreground(helpers.ColorPrimaryForeground)
 			}
 			row += style.Render(col)
 		}
@@ -140,7 +142,7 @@ func (m TableModel) View() string {
 	return container.Render(
 		helpers.VStack(
 			m.HeaderView(),
-			lipgloss.NewStyle().Height(m.height-2).MaxHeight(m.height-2).Render(
+			lipgloss.NewStyle().Background(helpers.ColorBackground).Foreground(helpers.ColorForeground).Height(m.height-2).MaxHeight(m.height-2).Render(
 				rowStack,
 			),
 			m.HelpView(),
@@ -164,7 +166,12 @@ func (m TableModel) ColumnWidths() []int {
 }
 
 func (m TableModel) HelpView() string {
-	return lipgloss.NewStyle().Bold(true).Render(strconv.Itoa(m.cursorRow+1), "/", strconv.Itoa(len(m.items)))
+	return lipgloss.NewStyle().
+		Background(helpers.ColorBackground).
+		Foreground(helpers.ColorForeground).
+		Bold(true).
+		Width(m.width).
+		Render(strconv.Itoa(m.cursorRow+1), "/", strconv.Itoa(len(m.items)))
 }
 
 func (m TableModel) HeaderView() string {
@@ -174,7 +181,7 @@ func (m TableModel) HeaderView() string {
 
 	for i, col := range m.columnDefinitions {
 		view.WriteString(
-			lipgloss.NewStyle().Width(colWidths[i]).Bold(true).Render(col.Title),
+			lipgloss.NewStyle().Width(colWidths[i]).Bold(true).Background(helpers.ColorBackground).Foreground(helpers.ColorForeground).Render(col.Title),
 		)
 	}
 
